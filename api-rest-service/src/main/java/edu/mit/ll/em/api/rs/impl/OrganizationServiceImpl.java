@@ -35,18 +35,26 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.ws.rs.PathParam;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.dao.DataAccessException;
 
 import edu.mit.ll.em.api.rs.OrgOrgTypeServiceResponse;
 import edu.mit.ll.em.api.rs.OrganizationService;
 import edu.mit.ll.em.api.rs.OrganizationServiceResponse;
+import edu.mit.ll.em.api.util.APIConfig;
 import edu.mit.ll.em.api.util.APILogger;
+import edu.mit.ll.nics.common.entity.Cap;
+import edu.mit.ll.nics.common.entity.Incident;
 import edu.mit.ll.nics.common.entity.Org;
+import edu.mit.ll.nics.common.entity.OrgCap;
 import edu.mit.ll.nics.common.entity.OrgOrgType;
 import edu.mit.ll.nics.common.entity.OrgType;
+import edu.mit.ll.nics.common.rabbitmq.RabbitFactory;
+import edu.mit.ll.nics.common.rabbitmq.RabbitPubSubProducer;
 import edu.mit.ll.nics.nicsdao.impl.OrgDAOImpl;
 
 
@@ -63,6 +71,7 @@ public class OrganizationServiceImpl implements OrganizationService {
 	/** Organization DAO */
 	private static final OrgDAOImpl orgDao = new OrgDAOImpl();
 	
+	private RabbitPubSubProducer rabbitProducer;
 	
 	/**
 	 * Returns a OrganizationServiceResponse with the organizations list
@@ -346,4 +355,115 @@ public class OrganizationServiceImpl implements OrganizationService {
 		
 		return response;
 	}
+	
+	public Response getCaps(){
+		Response response = null;
+		OrganizationServiceResponse organizationResponse = new OrganizationServiceResponse();
+		List<Cap> caps = null;
+		
+		try {
+			caps = orgDao.getCaps();
+			
+			
+			if(caps != null) {
+				organizationResponse.setCaps(caps);
+				organizationResponse.setMessage(Status.OK.getReasonPhrase());
+				response = Response.ok(organizationResponse).status(Status.OK).build();	
+			}else{
+				response = Response.ok("There was an error retrieving the orgcaps.")
+						.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			return response;
+		} catch(Exception e) {
+			APILogger.getInstance().e("OrganizationServiceImpl", "Unhandled exception while retrieving caps");
+			organizationResponse.setMessage("failure. Unable to read caps.");
+			response = Response.ok(organizationResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		return null;
+	};
+	
+	public Response getOrgCaps(int orgId)
+	{
+		Response response = null;
+		OrganizationServiceResponse organizationResponse = new OrganizationServiceResponse();
+		List<OrgCap> orgCaps = null;
+		
+		try {
+			orgCaps = orgDao.getOrgCaps(orgId);
+			if(orgCaps != null) {
+				organizationResponse.setOrgCaps(orgCaps);
+				organizationResponse.setMessage(Status.OK.getReasonPhrase());
+				response = Response.ok(organizationResponse).status(Status.OK).build();	
+			}else{
+				response = Response.ok("There was an error retrieving the orgcaps.")
+						.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+		} catch(Exception e) {
+			APILogger.getInstance().e("OrganizationServiceImpl", "Unhandled exception while querying OrgCaps");
+			organizationResponse.setMessage("failure. Unable to read OrgCaps.");
+			response = Response.ok(organizationResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		
+		return response;
+	}
+
+
+	@Override
+	public Response postOrgCaps(int orgCapId, String activeWeb, String activeMobile) {
+		
+		Response response = null;
+		OrganizationServiceResponse organizationResponse = new OrganizationServiceResponse();
+		OrgCap orgCap = null;
+		
+		try {
+			orgCap = orgDao.updateOrgCaps(orgCapId,activeWeb,activeMobile);
+			
+			if(orgCap != null) {
+				organizationResponse.setMessage(Status.OK.getReasonPhrase());
+				response = Response.ok(organizationResponse).status(Status.OK).build();	
+				
+				
+				notifyOrgCap(orgCap);
+				
+			}else{
+				response = Response.ok("There was an error updating the orgcaps.")
+						.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+		} catch(Exception e) {
+			APILogger.getInstance().e("OrganizationServiceImpl", "Unhandled exception while updating OrgCaps");
+			organizationResponse.setMessage("failure. Unable to update postOrgCaps.");
+			response = Response.ok(organizationResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		return response;
+	}
+	
+	private void notifyOrgCap(OrgCap orgCap) throws IOException {
+		if (orgCap != null) {
+			ObjectMapper mapper = new ObjectMapper();
+			String message = mapper.writeValueAsString(orgCap);
+			getRabbitProducer().produce("iweb.nics.orgcaps." + orgCap.getOrgId() + "." + orgCap.getCap().getName(), message);
+		}
+	}
+	
+	/**
+	 * Get Rabbit producer to send message
+	 * @return
+	 * @throws IOException
+	 */
+	private RabbitPubSubProducer getRabbitProducer() throws IOException {
+		if (rabbitProducer == null) {
+			rabbitProducer = RabbitFactory.makeRabbitPubSubProducer(
+					APIConfig.getInstance().getConfiguration().getString(APIConfig.RABBIT_HOSTNAME_KEY),
+					APIConfig.getInstance().getConfiguration().getString(APIConfig.RABBIT_EXCHANGENAME_KEY),
+					APIConfig.getInstance().getConfiguration().getString(APIConfig.RABBIT_USERNAME_KEY),
+					APIConfig.getInstance().getConfiguration().getString(APIConfig.RABBIT_USERPWD_KEY));
+		}
+		return rabbitProducer;
+	}
+	
 }

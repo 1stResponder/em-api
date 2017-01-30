@@ -29,46 +29,78 @@
  */
 package edu.mit.ll.em.api.rs;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import java.sql.Timestamp;
+
+public class AlertBean extends APIBean {
+
+	private int alertId;
+	private int userId;
+	private int toUserIds[];
+	private int workspaceId;
+	private int incidentId;
+	private String message;
+	private Timestamp created;
+	
+		
+	public AlertBean() {
+	}
+	
+	
+
+	public int getAlertId() {
+		return alertId;
+	}
+
+	public void setAlertId(int alertId) {
+		this.alertId = alertId;
+	}
 
 
-@Path("/collab/export")
-public interface DatalayerExport {
-	
-	/*@GET
-	@Path(value = "/{collabroomId}/incident/{incidentId}/user/{userId}/type/{exportType}/format/{exportFormat}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getDatalayer(
-				@PathParam("userId") long userId,
-				@PathParam("collabroomId") int collabroomId, 
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportType") String exportType,
-				@PathParam("exportFormat") String exportFormat,
-				@HeaderParam("CUSTOM-uid") String username);*/
+	public int getUserId() {
+		return userId;
+	}
 
-	@GET
-	@Path(value = "/{collabroomId}/incident/{incidentId}/user/{userId}/type/{exportType}/format/{exportFormat}/username/{username}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getDatalayer(
-				@PathParam("userId") long userId,
-				@PathParam("collabroomId") int collabroomId, 
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportType") String exportType,
-				@PathParam("exportFormat") String exportFormat,
-				@PathParam("username") String username);
+	public void setUserId(int userId) {
+		this.userId = userId;
+	}
 	
-	@GET
-	@Path(value = "/incident/{incidentId}/user/{userId}/format/{exportFormat}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getCapabilities(
-				@PathParam("userId") int userId,
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportFormat") String exportFormat);
+	public int[] getToUserIds() {
+		return toUserIds;
+	}
 	
+	public void setToUserIds(int toUserIds[]) {
+		this.toUserIds = toUserIds;
+	}
+
+	public int getWorkspaceId() {
+		return workspaceId;
+	}
+
+	public void setWorkspaceId(int workspaceId) {
+		this.workspaceId = workspaceId;
+	}
+
+	public int getIncidentId() {
+		return incidentId;
+	}
+
+	public void setIncidentId(int incidentId) {
+		this.incidentId = incidentId;
+	}
+
+	public String getMessage() {
+		return message;
+	}
+
+	public void setMessage(String message) {
+		this.message = message;
+	}
+
+	public Timestamp getCreated() {
+		return created;
+	}
+
+	public void setCreated(Timestamp created) {
+		this.created = created;
+	}
 }

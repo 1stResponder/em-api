@@ -27,48 +27,47 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package edu.mit.ll.em.api.rs;
+package edu.mit.ll.em.api.util.rabbitmq;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import java.io.IOException;
 
+import com.rabbitmq.client.ConsumerCancelledException;
+import com.rabbitmq.client.QueueingConsumer;
+import com.rabbitmq.client.ShutdownSignalException;
 
-@Path("/collab/export")
-public interface DatalayerExport {
+public class RabbitQueueConsumer extends RabbitClient {
+
+	private QueueingConsumer consumer = null;
+
+	public RabbitQueueConsumer(String hostname, String queueName) throws IOException {
+		super(hostname);
+		initialize(hostname, queueName);
+	}
+
+	public RabbitQueueConsumer(String hostname, String queueName,
+			String rabbitUsername, String rabbitUserpwd) throws IOException {
+		super(hostname, rabbitUsername, rabbitUserpwd);
+		initialize(hostname, queueName);
+	}
 	
-	/*@GET
-	@Path(value = "/{collabroomId}/incident/{incidentId}/user/{userId}/type/{exportType}/format/{exportFormat}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getDatalayer(
-				@PathParam("userId") long userId,
-				@PathParam("collabroomId") int collabroomId, 
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportType") String exportType,
-				@PathParam("exportFormat") String exportFormat,
-				@HeaderParam("CUSTOM-uid") String username);*/
+	private void initialize(String hostname, String queueName) throws IOException {
+		declareQueue(queueName);
+		System.out.println(" [*] Waiting for messages on queue " + queueName + ". To exit press CTRL+C");
+		consumer = new QueueingConsumer(getChannel());
+		getChannel().basicConsume(queueName, true, consumer);		
+	}
 
-	@GET
-	@Path(value = "/{collabroomId}/incident/{incidentId}/user/{userId}/type/{exportType}/format/{exportFormat}/username/{username}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getDatalayer(
-				@PathParam("userId") long userId,
-				@PathParam("collabroomId") int collabroomId, 
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportType") String exportType,
-				@PathParam("exportFormat") String exportFormat,
-				@PathParam("username") String username);
-	
-	@GET
-	@Path(value = "/incident/{incidentId}/user/{userId}/format/{exportFormat}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getCapabilities(
-				@PathParam("userId") int userId,
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportFormat") String exportFormat);
-	
+	public String consume() throws ShutdownSignalException, ConsumerCancelledException, InterruptedException {
+		String ret = null;
+		QueueingConsumer.Delivery delivery = consumer.nextDelivery();
+		ret = new String(delivery.getBody());
+		return ret;
+	}
+
+	public void destroy() {
+		if (consumer != null) {
+			consumer = null;
+		}
+		super.destroy();
+	}	
 }

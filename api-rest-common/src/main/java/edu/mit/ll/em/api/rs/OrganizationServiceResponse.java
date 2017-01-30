@@ -33,7 +33,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import edu.mit.ll.nics.common.entity.Cap;
 import edu.mit.ll.nics.common.entity.Org;
+import edu.mit.ll.nics.common.entity.OrgCap;
 import edu.mit.ll.nics.common.entity.OrgOrgType;
 import edu.mit.ll.nics.common.entity.OrgType;
 
@@ -48,6 +50,10 @@ public class OrganizationServiceResponse {
 	private List<OrgType> orgTypes = new ArrayList<OrgType>();
 	
 	private List<OrgOrgType> orgOrgTypes = new ArrayList<OrgOrgType>();
+
+	private List<OrgCap> orgCaps = new ArrayList<OrgCap>();
+	
+	private List<Cap> caps = new ArrayList<Cap>();
 	
 	// TODO: Really used for returning a count REST request; i.e., do not get
 	// the list of Organizations just the count.
@@ -114,6 +120,29 @@ public class OrganizationServiceResponse {
 
 	public void setCount(int count) {
 		this.count = count;
-	}	
+	}
+
+		public List<OrgCap> getOrgCaps() {
+		return orgCaps;
+	}
+
+	public void setOrgCaps(List<OrgCap> orgCaps) {
+		this.orgCaps = orgCaps;
+		if (orgCaps != null) {
+			count = orgCaps.size();
+		}
+	}
+	
+	public List<Cap> getCaps() {
+		return caps;
+	}
+
+	public void setCaps(List<Cap> caps) {
+		this.caps = caps;
+		if (caps != null) {
+			count = caps.size();
+		}
+	}
+		
 }
 

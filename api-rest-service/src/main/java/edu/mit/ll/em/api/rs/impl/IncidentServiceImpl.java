@@ -210,9 +210,9 @@ public class IncidentServiceImpl implements IncidentService {
 	 * 
 	 * @return Response IncidentResponse containing all Incidents with the specified workspace
 	 * @see IncidentResponse
-	 
-	public Response getIncidentsTree(Integer workspaceId, Integer accessibleByUserId) {
-
+	 *
+	 * public Response getIncidentsTree(Integer workspaceId, Integer accessibleByUserId) {
+     *
 	 * @return Response IncidentResponse containing all Incidents with the specified workspace and there children
 	 * @see IncidentResponse
 	 */

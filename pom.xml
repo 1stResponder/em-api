@@ -34,7 +34,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>edu.mit.ll.em.api</groupId>
 	<artifactId>em-api</artifactId>
-	<version>6.3</version>
+	<version>6.4-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<modules>
@@ -43,7 +43,7 @@
 	</modules>
 
 	<properties>
-                <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<amqclient-version>2.7.1</amqclient-version>
 		<cxf.version>3.0.3</cxf.version>
 		<spring.version>4.1.4.RELEASE</spring.version>
@@ -62,10 +62,19 @@
 		<postgresql.version>9.3-1102-jdbc4</postgresql.version>
 		<jackson.core.version>2.0.0</jackson.core.version>
 		<license.plugin.version>1.9.0</license.plugin.version>
-    		<jersey.version>2.17</jersey.version>
+    	<jersey.version>2.17</jersey.version>
+    	<drewnoakes.version>2.9.1</drewnoakes.version>
+		<fediz-spring.version>1.2.2</fediz-spring.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
+			<dependency>
+            	<groupId>com.sun</groupId>
+            	<artifactId>tools</artifactId>
+            	<version>1.7</version>
+            	<scope>system</scope>
+            	<systemPath>${java.home}/../lib/tools.jar</systemPath>
+        	</dependency>
 			<dependency>
 				<groupId>edu.mit.ll.em.api</groupId>
 				<artifactId>api-rest-common</artifactId>
@@ -121,9 +130,9 @@
 				<artifactId>esapi</artifactId>
 				<version>${esapi.version}</version>
 			</dependency>
-			<!-- <dependency> <groupId>org.apache.camel</groupId> <artifactId>camel-spring</artifactId> 
-				<version>${camel.version}</version> </dependency> <dependency> <groupId>org.apache.camel</groupId> 
-				<artifactId>camel-jackson</artifactId> <version>${camel.version}</version> 
+			<!-- <dependency> <groupId>org.apache.camel</groupId> <artifactId>camel-spring</artifactId>
+				<version>${camel.version}</version> </dependency> <dependency> <groupId>org.apache.camel</groupId>
+				<artifactId>camel-jackson</artifactId> <version>${camel.version}</version>
 				</dependency> -->
 			<dependency>
 				<groupId>org.codehaus.jackson</groupId>
@@ -160,13 +169,13 @@
 				<version>9.2.6.v20141205</version>
 			</dependency>
 
-			<!-- CXF Rest Dependency --><!-- 3.0.3 does away with the bundle, so need to get them individually 
-				<dependency> <groupId>org.apache.cxf</groupId> <artifactId>cxf-bundle-jaxrs</artifactId> 
-				<version>${cxf.version}</version> <exclusions> <exclusion> <groupId>org.eclipse.jetty</groupId> 
-				<artifactId>jetty-server</artifactId> </exclusion> <exclusion> <groupId>org.apache.geronimo.specs</groupId> 
-				<artifactId>geronimo-activation_1.1_spec</artifactId> </exclusion> <exclusion> 
-				<groupId>org.apache.geronimo.specs</groupId> <artifactId>geronimo-javamail_1.4_spec</artifactId> 
-				</exclusion> <exclusion> <groupId>commons-logging</groupId> <artifactId>commons-logging</artifactId> 
+			<!-- CXF Rest Dependency --><!-- 3.0.3 does away with the bundle, so need to get them individually
+				<dependency> <groupId>org.apache.cxf</groupId> <artifactId>cxf-bundle-jaxrs</artifactId>
+				<version>${cxf.version}</version> <exclusions> <exclusion> <groupId>org.eclipse.jetty</groupId>
+				<artifactId>jetty-server</artifactId> </exclusion> <exclusion> <groupId>org.apache.geronimo.specs</groupId>
+				<artifactId>geronimo-activation_1.1_spec</artifactId> </exclusion> <exclusion>
+				<groupId>org.apache.geronimo.specs</groupId> <artifactId>geronimo-javamail_1.4_spec</artifactId>
+				</exclusion> <exclusion> <groupId>commons-logging</groupId> <artifactId>commons-logging</artifactId>
 				</exclusion> </exclusions> </dependency> -->
 
 			<!-- Log4j Dependencies -->
@@ -304,6 +313,16 @@
 			       <artifactId>jersey-client</artifactId>
 			       <version>${jersey.version}</version>
 		      </dependency>
+			<dependency>
+				<groupId>edu.mit.ll.nics.tools</groupId>
+				<artifactId>image-processing</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.drewnoakes</groupId>
+				<artifactId>metadata-extractor</artifactId>
+				<version>${drewnoakes.version}</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
@@ -322,7 +341,7 @@
 					</configuration>
 				</plugin>
 				<plugin>
-                    <!-- This plugin formats source files by checking and adding a copyright 
+                    <!-- This plugin formats source files by checking and adding a copyright
                         header if it's missing. -->
                     <groupId>com.mycila.maven-license-plugin</groupId>
                     <artifactId>maven-license-plugin</artifactId>
@@ -367,7 +386,9 @@
                             <exclude>**/.git/**</exclude>
                             <exclude>**/*.log</exclude>
                             <exclude>**/*.txt</exclude>
-
+                            <exclude>**/*.versionsBackup</exclude>
+                            <exclude>**/*.md</exclude>
+                            <exclude>**/*.docx</exclude>
                             <!-- Project-specific excludes -->
                         </excludes>
                     </configuration>

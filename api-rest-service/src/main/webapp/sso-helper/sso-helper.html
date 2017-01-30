@@ -29,22 +29,23 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+<!DOCTYPE html>
+<html>
+<head>
+		<meta charset="utf-8">
+		<meta http-equiv="x-ua-compatible" content="ie=edge">
+		<title>EM API SSO-Helper</title>
+</head>
+<body onload="bodyOnloadHandler()">
 
-	<parent>
-		<artifactId>em-api</artifactId>
-		<groupId>edu.mit.ll.em.api</groupId>
-		<version>6.4-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
-	</parent>
-	<artifactId>api-rest-common</artifactId>
+<script type="text/javascript">
+function bodyOnloadHandler() {
+	var parent = window.opener;
+	if(parent && typeof parent.closeMe == 'function') {		
+		parent.closeMe(); // this function is created by the caller.
+	}
+}
 
-	<dependencies>
-		<dependency>
-			<groupId>edu.mit.ll.nics.common</groupId>
-            		<artifactId>entities</artifactId>
-		</dependency>
-	</dependencies>
-</project>
+</script>
+</body>
+</html>

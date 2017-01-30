@@ -27,48 +27,38 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package edu.mit.ll.em.api.rs;
+package edu.mit.ll.em.api.util.rabbitmq;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+public class RabbitPubSubMsg {
 
+	private String msg;
 
-@Path("/collab/export")
-public interface DatalayerExport {
+	private String routingKey;
 	
-	/*@GET
-	@Path(value = "/{collabroomId}/incident/{incidentId}/user/{userId}/type/{exportType}/format/{exportFormat}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getDatalayer(
-				@PathParam("userId") long userId,
-				@PathParam("collabroomId") int collabroomId, 
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportType") String exportType,
-				@PathParam("exportFormat") String exportFormat,
-				@HeaderParam("CUSTOM-uid") String username);*/
+	public RabbitPubSubMsg() {
+		
+	}
+	
+	public RabbitPubSubMsg(String msg, String routingKey) {
+		setMsg(msg);
+		setRoutingKey(routingKey);
+	}
 
-	@GET
-	@Path(value = "/{collabroomId}/incident/{incidentId}/user/{userId}/type/{exportType}/format/{exportFormat}/username/{username}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getDatalayer(
-				@PathParam("userId") long userId,
-				@PathParam("collabroomId") int collabroomId, 
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportType") String exportType,
-				@PathParam("exportFormat") String exportFormat,
-				@PathParam("username") String username);
-	
-	@GET
-	@Path(value = "/incident/{incidentId}/user/{userId}/format/{exportFormat}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getCapabilities(
-				@PathParam("userId") int userId,
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportFormat") String exportFormat);
-	
+	public String getMsg() {
+		return msg;
+	}
+
+	public String getRoutingKey() {
+		return routingKey;
+	}
+
+	public void setMsg(String msg) {
+		this.msg = msg;
+	}
+
+	public void setRoutingKey(String routingKey) {
+		this.routingKey = routingKey;
+	}
+
+
 }

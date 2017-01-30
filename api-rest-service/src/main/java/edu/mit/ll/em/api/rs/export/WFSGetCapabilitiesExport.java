@@ -53,6 +53,7 @@ public class WFSGetCapabilitiesExport extends GetCapabilitiesExportFile{
 	 */
 	public WFSGetCapabilitiesExport(String exportFormat, String mapserverURL, String workspaceName, int userId, int incidentId){
 		super(exportFormat, mapserverURL, workspaceName, userId, incidentId);
+		this.xPath = this.getXPath();
 	}
 	
 	/**<ROOT>

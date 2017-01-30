@@ -98,6 +98,8 @@ public class ReportServiceImpl implements ReportService {
 	public Response getReports(int incidentId, String reportType, ReportOptParms optParms) {
 		// Make sure we support this type of form.
 		Response response = validateReportType(reportType, "GET");
+
+		// null is returned for success
 		if (response != null) {
 			return response;
 		}
@@ -589,21 +591,14 @@ public class ReportServiceImpl implements ReportService {
 		
 		List<Attachment> attachments = body.getAllAttachments();
 		String key, value;
-		
-		// TODO:refactor remove phinics-dev url, and ensure defaults are
-		// up to date with our newer Ubuntu 14.04 VM deployments
-		String storagePath = APIConfig.getInstance().getConfiguration()
-				.getString(APIConfig.REPORTS_SR_STORAGEPATH,
-						"/opt/data/nics/upload/");
-		String url = APIConfig.getInstance().getConfiguration()
-				.getString(APIConfig.REPORTS_SR_URL,
-				"/data/nics/static/image-upload/");
-		String path = APIConfig.getInstance().getConfiguration()
-				.getString(APIConfig.REPORTS_SR_PATH,
-				"https://phinics-dev.ll.mit.edu/static/image-upload/");
-		
-		// DB
-		//PhinicsDbFacade db = PhinicsDbFactory.getInstance().getPhinicsDbFacadeSingleton();
+				
+		String storagePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_SR_STORAGEPATH,
+				"/opt/data/nics/reports/general/");
+		String url = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_SR_URL,
+				"/data/nics/static/upload/reports/general/");
+		String path = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_SR_PATH,
+				"https://<webserver>/static/reports/general/");
+				
 		Location location = new Location();
 		location.setTime(-1);
 		
@@ -719,29 +714,9 @@ public class ReportServiceImpl implements ReportService {
 		image.setLocation(location);
 		image.setUrl(msg.getString("image"));
 		image.setFullPath(msg.getString("fullpath"));
-		
-		// Persist DB entries
-		//db.persist(location);
-		//db.persist(image);
-		
-		/* Not persisting image or location entities, because nothing uses them, it's a PHINICS holdover. Also, 
-		 * in move to springjdbc, there's a complication with persisting Location's location field of type Geometry
-		 * 
-		 *
+				
 		try {
-			phiDao.persistLocation(location);
-			phiDao.persistImage(image);
-		} catch(Exception e) {
-			APILogger.getInstance().e(CNAME, "Exception persisting location or image: " + e.getMessage());
-			reportResponse.setMessage("error. Problem persisting location and image entities");
-			response = Response.ok(reportResponse).status(Status.INTERNAL_SERVER_ERROR).build();
-			return response;
-		}*/
-		
-		try {
-			//reportResponse.getReports().add(ReportDAO.getInstance().postReport(
-				//	incidentId, formTypeId, report));
-			
+						
 			Form ret = null; 
 			ret = formDao.persistForm(form);
 			
@@ -783,9 +758,12 @@ public class ReportServiceImpl implements ReportService {
 		List<Attachment> attachments = body.getAllAttachments();
 		String key, value;
 		
-		String storagePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_DR_STORAGEPATH, "/opt/data/nics/upload/report/damage/");
-		String url = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_DR_URL, "/data/nics/static/image-upload/report/damage/");
-		String path = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_DR_PATH, "https://phinics-dev.ll.mit.edu/static/image-upload/report/damage/");
+		String storagePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_DR_STORAGEPATH, 
+				"/opt/data/nics/upload/reports/damage/");
+		String url = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_DR_URL, 
+				"/data/nics/static/upload/reports/damage/");
+		String path = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_DR_PATH, 
+				"https://<webserver>/static/reports/damage/");
 				
 		Location location = new Location(); // TODO:refactor get rid of this type, or at least
 												  //   refactor to be a common Location object if we're not using
@@ -796,8 +774,6 @@ public class ReportServiceImpl implements ReportService {
 		Incident inc = null;
 		User user = null;
 		Coordinate lla = new Coordinate();
-		// TODO:refactor get rid of papi report, use nics Form
-		//Report report = new Report();
 		Form form = new Form();
 		form.setIncidentid(incidentId);
 		form.setFormtypeid(formTypeId);
@@ -957,9 +933,12 @@ public class ReportServiceImpl implements ReportService {
 		List<Attachment> attachments = body.getAllAttachments();
 		String key, value;
 		
-		String storagePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_UXO_STORAGEPATH, "/opt/data/nics/upload/report/uxo/");
-		String url = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_UXO_URL, "/data/nics/static/image-upload/report/uxo/");
-		String path = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_UXO_PATH, "https://phinics-dev.ll.mit.edu/static/image-upload/report/uxo/");
+		String storagePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_UXO_STORAGEPATH, 
+				"/opt/data/nics/upload/reports/uxo/");
+		String url = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_UXO_URL, 
+				"/data/nics/static/upload/reports/uxo/");
+		String path = APIConfig.getInstance().getConfiguration().getString(APIConfig.REPORTS_UXO_PATH, 
+				"https://<webserver>/static/reports/uxo/");
 				
 		Location location = new Location(); // TODO:refactor get rid of this type, or at least
 												  //   refactor to be a common Location object if we're not using
@@ -969,9 +948,7 @@ public class ReportServiceImpl implements ReportService {
 		// Other necessary entities
 		Incident inc = null;
 		User user = null;
-		Coordinate lla = new Coordinate();
-		// TODO:refactor get rid of papi report, use nics Form
-		//Report report = new Report();
+		Coordinate lla = new Coordinate();		
 		Form form = new Form();
 		form.setIncidentid(incidentId);
 		form.setFormtypeid(formTypeId);

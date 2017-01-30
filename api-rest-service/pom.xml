@@ -36,7 +36,7 @@
 	<parent>
 		<artifactId>em-api</artifactId>
 		<groupId>edu.mit.ll.em.api</groupId>
-		<version>6.3</version>
+		<version>6.4-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<packaging>war</packaging>
@@ -190,6 +190,19 @@
 		<dependency>
 			<groupId>org.glassfish.jersey.core</groupId>
 			<artifactId>jersey-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>edu.mit.ll.nics.tools</groupId>
+			<artifactId>image-processing</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.drewnoakes</groupId>
+			<artifactId>metadata-extractor</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.cxf.fediz</groupId>
+			<artifactId>fediz-spring</artifactId>
+			<version>${fediz-spring.version}</version>
 		</dependency>
 	</dependencies>
 </project>

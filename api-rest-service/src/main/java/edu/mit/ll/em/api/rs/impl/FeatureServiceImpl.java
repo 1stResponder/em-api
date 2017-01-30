@@ -620,10 +620,10 @@ public class FeatureServiceImpl implements FeatureService {
 			Set<Document> documents = feature.getDocuments();
 			if (documents != null) {
 				for(Document doc : documents) {
-					String path = UriBuilder.fromPath(fileUploadUrl)
-							.path(FEATURES_SUBPATH).path(doc.getFilename())
-							.build().toString();
-					doc.setFilename(path);
+						String path = UriBuilder.fromUri(fileUploadUrl)
+						.path(FEATURES_SUBPATH).path(doc.getFilename())
+						.build().toString();
+						doc.setFilename(path);
 				}
 			}
 		}
@@ -739,6 +739,9 @@ public class FeatureServiceImpl implements FeatureService {
 	private Response buildGetResponse(
 			List<Feature> features, 
 			List<Long> deletedFeatures){
+		if(deletedFeatures != null){
+			System.out.println("Deleted Features: " + deletedFeatures.size());
+		}
 		FeatureServiceResponse featureResponse = this.buildFeatureServiceResponse(features);
 		featureResponse.setDeletedFeature(deletedFeatures);
 		return Response.ok(featureResponse).status(Status.OK).build();
@@ -790,7 +793,7 @@ public class FeatureServiceImpl implements FeatureService {
 	
 	private Response getAccessDeniedResponse(){
 		return Response.status(Status.BAD_REQUEST).entity(
-				"You do not have permissions to perform this function.").build();
+				Status.FORBIDDEN.getReasonPhrase()).build();
 	}
 }
 

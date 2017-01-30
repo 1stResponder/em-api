@@ -47,6 +47,9 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import edu.mit.ll.nics.common.rabbitmq.RabbitFactory;
+import edu.mit.ll.nics.common.rabbitmq.RabbitPubSubProducer;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 
@@ -57,6 +60,7 @@ import org.json.JSONObject;
 
 import org.springframework.dao.DataAccessException;
 
+import edu.mit.ll.em.api.dataaccess.MessageBusProducer;
 import edu.mit.ll.em.api.rs.FieldMapResponse;
 import edu.mit.ll.em.api.rs.NewUserOrgResponse;
 import edu.mit.ll.em.api.rs.RegisterUser;
@@ -67,8 +71,12 @@ import edu.mit.ll.em.api.rs.UserSearchParams;
 import edu.mit.ll.em.api.rs.UserService;
 import edu.mit.ll.em.api.util.APIConfig;
 import edu.mit.ll.em.api.util.APILogger;
+import edu.mit.ll.em.api.util.NetUtil;
 import edu.mit.ll.em.api.util.SADisplayConstants;
 import edu.mit.ll.em.api.util.UserInfoValidator;
+import edu.mit.ll.nics.common.entity.CurrentUserSession;
+//import edu.mit.ll.em.api.rs.User;
+import edu.mit.ll.nics.common.entity.User;
 
 import edu.mit.ll.nics.common.email.JsonEmail;
 import edu.mit.ll.nics.common.entity.Contact;
@@ -80,18 +88,21 @@ import edu.mit.ll.nics.common.entity.SADisplayMessageEntity;
 import edu.mit.ll.nics.common.entity.User;
 import edu.mit.ll.nics.common.entity.UserOrg;
 import edu.mit.ll.nics.common.entity.UserOrgWorkspace;
+import edu.mit.ll.nics.common.messages.sadisplay.SADisplayMessage;
 import edu.mit.ll.nics.common.entity.Workspace;
 import edu.mit.ll.nics.common.rabbitmq.RabbitFactory;
 import edu.mit.ll.nics.common.rabbitmq.RabbitPubSubProducer;
 
 import edu.mit.ll.nics.nicsdao.impl.IncidentDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.OrgDAOImpl;
+import edu.mit.ll.nics.nicsdao.impl.SystemRoleDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserOrgDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserSessionDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.WorkspaceDAOImpl;
 
 import edu.mit.ll.nics.sso.util.SSOUtil;
+import edu.mit.ll.nics.common.email.JsonEmail;
 
 /**
  * 
@@ -869,6 +880,96 @@ public class UserServiceImpl implements UserService {
 		return response;
 	}
 	
+	/**
+	 *  Read a single User item.
+	 * @param usersessionID of User item to be read. (currentSession only)
+	 * @return Response
+	 * @see UserResponse
+	 */	
+	public Response getUserBySessionId(long usersessionId) {
+		Response response = null;
+		UserResponse userResponse = new UserResponse();
+         
+		if (usersessionId < 1) {
+			userResponse.setMessage("Invalid usersessionId value: " + usersessionId) ;
+			response = Response.ok(userResponse).status(Status.BAD_REQUEST).build();
+			return response;
+		}
+        System.out.println("mysession id: " + usersessionId);
+		//User u = null;
+		edu.mit.ll.nics.common.entity.User u = null;
+		try {
+			//u = UserDAO.getInstance().getUserById(userId);
+			u = userDao.getUserBySessionId(usersessionId);
+		} catch (DataAccessException e) {
+			userResponse.setMessage("error. DataAccessException: " + e.getMessage());
+			response = Response.ok(userResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+			return response;
+		} catch (Exception e) {
+			userResponse.setMessage("error. Unhandled Exception: " + e.getMessage());
+			response = Response.ok(userResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+			return response;
+		}
+
+		if (u == null) {
+			userResponse.setMessage("No user found for usersessionId value: " + usersessionId) ;
+			response = Response.ok(userResponse).status(Status.NOT_FOUND).build();
+			return response;			
+		}
+
+		userResponse.getUsers().add(u);
+		userResponse.setCount(1);
+		userResponse.setMessage("ok");
+		response = Response.ok(userResponse).status(Status.OK).build();
+
+		return response;
+	}
+	
+	/**
+	 *  Read a single User item.
+	 * @param usersessionID of User item to be read (nit current session id).
+	 * @return Response
+	 * @see UserResponse
+	 */	
+	public Response getUserByPastSessionId(long usersessionId) {
+		Response response = null;
+		UserResponse userResponse = new UserResponse();
+         
+		if (usersessionId < 1) {
+			userResponse.setMessage("Invalid usersessionId value: " + usersessionId) ;
+			response = Response.ok(userResponse).status(Status.BAD_REQUEST).build();
+			return response;
+		}
+        System.out.println("mysession id: " + usersessionId);
+		//User u = null;
+		edu.mit.ll.nics.common.entity.User u = null;
+		try {
+			//u = UserDAO.getInstance().getUserById(userId);
+			u = userDao.getUserByPastSessionId(usersessionId);
+		} catch (DataAccessException e) {
+			userResponse.setMessage("error. DataAccessException: " + e.getMessage());
+			response = Response.ok(userResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+			return response;
+		} catch (Exception e) {
+			userResponse.setMessage("error. Unhandled Exception: " + e.getMessage());
+			response = Response.ok(userResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+			return response;
+		}
+
+		if (u == null) {
+			userResponse.setMessage("No user found for usersessionId value: " + usersessionId) ;
+			response = Response.ok(userResponse).status(Status.NOT_FOUND).build();
+			return response;			
+		}
+
+		userResponse.getUsers().add(u);
+		userResponse.setCount(1);
+		userResponse.setMessage("ok");
+		response = Response.ok(userResponse).status(Status.OK).build();
+
+		return response;
+	}
+	
 	public Response findUser(String firstName, String lastName, boolean exact){
 		Response response = null;
 		UserResponse userResponse = new UserResponse();
@@ -1246,8 +1347,11 @@ public class UserServiceImpl implements UserService {
 					if(updatedProfile){
 
 						String newPWHash = generateSaltedHash(user.getNewPw(),user.getUserName());
+
+						//String newIDPUserHash = encryptPassword(user.getNewPw(),user.getUserName());
 						
 						updatedProfile =  userDao.updateUserPW(dbUser.getUserId(), newPWHash);
+						//updatedProfile =  userDao.updateUserPW(dbUser.getUserId(), newIDPUserHash);
 						
 						if(updatedProfile){
 							
@@ -1388,6 +1492,7 @@ public class UserServiceImpl implements UserService {
 		user.setUsername(rUser.getEmail());
 		user.setUserId(userid);
 		user.setPasswordHash(generateSaltedHash(rUser.getPassword(), rUser.getEmail()));
+		user.setPasswordIDP(encryptPassword(rUser.getPassword(),rUser.getEmail()));
 		user.setEnabled(false);
 		user.setActive(true);
 		user.setLastupdated(Calendar.getInstance().getTime());
@@ -1427,11 +1532,71 @@ public class UserServiceImpl implements UserService {
 
 			byte[] raw = md.digest();
 			return Base64.encodeBase64String(raw);
-		} 
+		}
 		catch (Exception e) {
-			throw new RuntimeException(e);        
-		} 
+			throw new RuntimeException(e); 
+		}
 	}
+
+	public static String encryptPassword(String password, String salt)
+  {
+    	try {
+			MessageDigest md = MessageDigest.getInstance("SHA-1");
+
+			if (salt != null)
+			{
+				md.update(salt.getBytes("UTF-8"));
+				byte[] encryptedSalt = md.digest();
+
+				md.reset();
+				md.update(password.getBytes("UTF-8"));
+				md.update(encryptedSalt);
+			}
+			else
+			{
+				md.update(password.getBytes("UTF-8"));
+			}
+
+			byte[] raw = md.digest();
+          //	byte[] doubleHashed = encryptPassword(raw, salt);
+          
+          	//return raw;
+          	return Base64.encodeBase64String(raw);
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+       
+  }
+  
+  public static byte[] encryptPassword(byte[] password, String salt)
+  {
+    	try {
+			MessageDigest md = MessageDigest.getInstance("SHA-1");
+
+			if (salt != null)
+			{
+				md.update(salt.getBytes("UTF-8"));
+				byte[] encryptedSalt = md.digest();
+              
+				md.reset();
+				md.update(password);
+				md.update(encryptedSalt);
+			}
+			else
+			{
+				md.update(password);
+			}
+
+			byte[] raw = md.digest();
+			//return Base64.encodeBase64String(raw);
+          
+          	return raw;
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+  }
 	
 	
 	/**

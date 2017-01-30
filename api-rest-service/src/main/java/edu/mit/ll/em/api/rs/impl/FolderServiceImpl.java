@@ -249,6 +249,7 @@ public class FolderServiceImpl implements FolderService {
 			else{
 				folderResponse.setMessage(ERROR_MESSAGE);
 				response = Response.ok(folderResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+				return response;
 			}
 					
 		} catch (Exception e) {

@@ -67,7 +67,8 @@ public class DatalayerExportImpl implements DatalayerExport{
 	private static final String LINE = "line";
 	private static final String POLYGON = "polygon";
 	private static final String SHAPE = "shape";
-	
+	private static final String GEOMETRY_NAME = "geometry";
+
 	private static final String ERROR_FILENAME = "Export_Error";
 	private static final String TYPE_ERROR = "There was an error retrieving an export file for format ";
 	private static final String PERMISSION_ERROR = "You do not have permissions to download this file.";
@@ -81,16 +82,16 @@ public class DatalayerExportImpl implements DatalayerExport{
 	private String mapserverURL;
 	
 	public Envelope maxExtent = new Envelope(-14084454.868, -6624200.909, 1593579.354, 6338790.069);
-    public Envelope maxExtentLatLon = new Envelope(-126.523, -59.506, 14.169, 49.375);
-    
-    public static int SRID = 3857;
-    public static String SRS_STRING = "EPSG:3857";
+	public Envelope maxExtentLatLon = new Envelope(-126.523, -59.506, 14.169, 49.375);
 	
-    private static final IncidentDAOImpl incidentDao = new IncidentDAOImpl();
-    private static final CollabRoomDAOImpl collabDao = new CollabRoomDAOImpl();
-    private static final UserDAOImpl userDao = new UserDAOImpl();
-    
-    
+	public static int SRID = 3857;
+	public static String SRS_STRING = "EPSG:3857";
+	
+	private static final IncidentDAOImpl incidentDao = new IncidentDAOImpl();
+	private static final CollabRoomDAOImpl collabDao = new CollabRoomDAOImpl();
+	private static final UserDAOImpl userDao = new UserDAOImpl();
+	
+	
 	public DatalayerExportImpl(){
 		this.loadConfig();
 	}
@@ -138,8 +139,8 @@ public class DatalayerExportImpl implements DatalayerExport{
 		}
 		
 		return Response.ok(response, MediaType.APPLICATION_OCTET_STREAM)
-			      .header("Content-Disposition", "attachment; filename=\"" + response.getName() + "\"" )
-			      .build();
+				  .header("Content-Disposition", "attachment; filename=\"" + response.getName() + "\"" )
+				  .build();
 	}
 	
 	/**
@@ -159,8 +160,8 @@ public class DatalayerExportImpl implements DatalayerExport{
 		}
 		
 		return Response.ok(response, MediaType.APPLICATION_OCTET_STREAM)
-			      .header("Content-Disposition", "attachment; filename=\"" + response.getName() + "\"" )
-			      .build();
+				  .header("Content-Disposition", "attachment; filename=\"" + response.getName() + "\"" )
+				  .build();
 		
 	}
 	
@@ -280,16 +281,16 @@ public class DatalayerExportImpl implements DatalayerExport{
 		String title = "";
 		String sql = this.getSql(collabroomId, type);
 		
-		if (this.geoserver.addFeatureTypeSQL(this.workspaceName, this.dataStoreName, layername, SRS_STRING, sql, "the_geom", "Geometry", SRID)) {
-            this.geoserver.updateLayerStyle(layername, this.workspaceName, "collabRoomStyle");
-            this.geoserver.updateFeatureTypeTitle(layername, this.workspaceName, this.dataStoreName, title);
-            this.geoserver.updateFeatureTypeBounds(this.workspaceName, this.dataStoreName, layername, maxExtent, maxExtentLatLon, SRS_STRING);
-            this.geoserver.updateFeatureTypeEnabled(this.workspaceName, this.dataStoreName, layername, true);
-            this.geoserver.updateLayerEnabled(layername, this.workspaceName, true);
-            return true;
-        } else {
-            return false;
-        }
+		if (this.geoserver.addFeatureTypeSQL(this.workspaceName, this.dataStoreName, layername, SRS_STRING, sql, GEOMETRY_NAME, "Geometry", SRID)) {
+			this.geoserver.updateLayerStyle(layername, this.workspaceName, "collabRoomStyle");
+			this.geoserver.updateFeatureTypeTitle(layername, this.workspaceName, this.dataStoreName, title);
+			this.geoserver.updateFeatureTypeBounds(this.workspaceName, this.dataStoreName, layername, maxExtent, maxExtentLatLon, SRS_STRING);
+			this.geoserver.updateFeatureTypeEnabled(this.workspaceName, this.dataStoreName, layername, true);
+			this.geoserver.updateLayerEnabled(layername, this.workspaceName, true);
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	/**
@@ -335,6 +336,7 @@ public class DatalayerExportImpl implements DatalayerExport{
 	 */
 	private boolean hasPermissions(long userId, int incidentId, int collabRoomId){
 		try{
+			//List<CollabRoom> rooms = CollabDAO.getInstance().getAccessibleCollabRooms(userId, incidentId);
 			String incidentMap = APIConfig.getInstance().getConfiguration().getString(
 					APIConfig.INCIDENT_MAP, SADisplayConstants.INCIDENT_MAP);
 			

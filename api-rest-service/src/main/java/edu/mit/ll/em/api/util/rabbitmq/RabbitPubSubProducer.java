@@ -27,48 +27,45 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package edu.mit.ll.em.api.rs;
+package edu.mit.ll.em.api.util.rabbitmq;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import java.io.IOException;
 
-
-@Path("/collab/export")
-public interface DatalayerExport {
+public class RabbitPubSubProducer extends RabbitClient {
 	
-	/*@GET
-	@Path(value = "/{collabroomId}/incident/{incidentId}/user/{userId}/type/{exportType}/format/{exportFormat}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getDatalayer(
-				@PathParam("userId") long userId,
-				@PathParam("collabroomId") int collabroomId, 
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportType") String exportType,
-				@PathParam("exportFormat") String exportFormat,
-				@HeaderParam("CUSTOM-uid") String username);*/
+	private String exchangeName;
 
-	@GET
-	@Path(value = "/{collabroomId}/incident/{incidentId}/user/{userId}/type/{exportType}/format/{exportFormat}/username/{username}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getDatalayer(
-				@PathParam("userId") long userId,
-				@PathParam("collabroomId") int collabroomId, 
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportType") String exportType,
-				@PathParam("exportFormat") String exportFormat,
-				@PathParam("username") String username);
+	public RabbitPubSubProducer(String hostname, String exchangeName)
+			throws IOException {
+		super(hostname);
+		initialize(hostname, exchangeName);
+	}
 	
-	@GET
-	@Path(value = "/incident/{incidentId}/user/{userId}/format/{exportFormat}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getCapabilities(
-				@PathParam("userId") int userId,
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportFormat") String exportFormat);
+	public RabbitPubSubProducer(String hostname, String exchangeName,
+			String rabbitUsername, String rabbitUserpwd)
+			throws IOException {
+		super(hostname, rabbitUsername, rabbitUserpwd);
+		initialize(hostname, exchangeName);
+	}	
 	
+	private void initialize(String hostname, String exchangeName)
+			throws IOException {
+		declareExchange(exchangeName);
+		this.exchangeName = exchangeName;
+	}	
+
+	public void produce(String routingKey, String message) throws IOException {
+        if (message == null) {
+        	throw new IllegalArgumentException("message is null");
+        }
+		if (routingKey == null) {
+			throw new NullPointerException("routingKey is null");
+		}        
+        getChannel().basicPublish(exchangeName, routingKey, null, message.getBytes());
+        System.out.println(" [x] Sent '" + routingKey + "':'" + message + "'");	
+	}
+
+	public void destroy() {
+		super.destroy();
+	}		
 }

@@ -55,6 +55,7 @@
 		<jaxrs:serviceBeans>
 			<bean class="edu.mit.ll.em.api.rs.impl.ChatMsgServiceImpl" />
 			<bean class="edu.mit.ll.em.api.rs.impl.AnnouncementServiceImpl" />
+			<bean class="edu.mit.ll.em.api.rs.impl.AlertServiceImpl" />
 			<bean class="edu.mit.ll.em.api.rs.impl.CollabServiceImpl" />
 			<bean class="edu.mit.ll.em.api.rs.impl.DatalayerExportImpl" />
 			<bean class="edu.mit.ll.em.api.rs.impl.DatalayerServiceImpl" />

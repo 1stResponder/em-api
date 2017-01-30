@@ -32,11 +32,14 @@ package edu.mit.ll.em.api.rs.impl;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -47,6 +50,7 @@ import java.security.DigestInputStream;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.EnumSet;
@@ -60,6 +64,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import javax.ws.rs.PathParam;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -68,6 +73,10 @@ import javax.ws.rs.client.Invocation.Builder;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+
+import edu.mit.ll.em.api.dataaccess.SystemRoleDAO;
+import edu.mit.ll.nics.common.entity.CollabRoom;
+import edu.mit.ll.nics.common.entity.datalayer.*;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.io.FileUtils;
@@ -90,6 +99,7 @@ import edu.mit.ll.em.api.rs.DatalayerServiceResponse;
 import edu.mit.ll.em.api.rs.FieldMapResponse;
 import edu.mit.ll.em.api.util.APIConfig;
 import edu.mit.ll.em.api.util.FileUtil;
+import edu.mit.ll.em.api.util.ImageLayerGenerator;
 import edu.mit.ll.em.api.util.SADisplayConstants;
 import edu.mit.ll.nics.common.entity.User;
 import edu.mit.ll.nics.common.entity.UserOrg;
@@ -112,6 +122,12 @@ import edu.mit.ll.nics.nicsdao.impl.FolderDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserOrgDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserSessionDAOImpl;
+
+import com.drew.imaging.ImageProcessingException;
+import com.drew.lang.GeoLocation;
+import com.drew.metadata.Metadata;
+
+import edu.mit.ll.nics.tools.image_processing.ImageProcessor;
 
 /**
  * 
@@ -145,6 +161,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 	private static String geoserverWorkspace;
 	private static String geoserverDatastore;
 	private static String webserverURL;
+	private static String tempDir;
 	
 	private RabbitPubSubProducer rabbitProducer;
 	
@@ -158,7 +175,36 @@ public class DatalayerServiceImpl implements DatalayerService {
 		mapserverURL = config.getString(APIConfig.EXPORT_MAPSERVER_URL);
 		webserverURL = config.getString(APIConfig.EXPORT_WEBSERVER_URL);
 		jerseyClient = ClientBuilder.newClient();
+		tempDir = System.getProperty("java.io.tmpdir");
 	}
+	
+	@Override
+	public Response getDatalayers(String folderId) {
+		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
+		try{
+			datalayerResponse.setDatalayerfolders(datalayerDao.getDatalayerFolders(folderId));
+		}catch(Exception e){
+			logger.error("Failed to retrieve data layers", e);
+			datalayerResponse.setMessage("Failed to retrieve data layers");
+			return Response.ok(datalayerResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		return Response.ok(datalayerResponse).status(Status.OK).build();
+	}
+	
+	public Response getCollabRoomDatalayers(int collabRoomId){
+		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
+		try{
+			datalayerResponse.setDatalayers(datalayerDao.getCollabRoomDatalayers(collabRoomId));
+		}catch(Exception e){
+			logger.error("Failed to retrieve data layers", e);
+			datalayerResponse.setMessage("Failed to retrieve data layers");
+			return Response.ok(datalayerResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		return Response.ok(datalayerResponse).status(Status.OK).build();
+	}
+	
 	
 	@Override
 	public Response getTrackingLayers(int workspaceId) {
@@ -175,20 +221,6 @@ public class DatalayerServiceImpl implements DatalayerService {
 		return Response.ok(response).status(Status.OK).build();
 	}
 	
-	@Override
-	public Response getDatalayers(String folderId) {
-		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
-		try{
-			datalayerResponse.setDatalayerfolders(datalayerDao.getDatalayerFolders(folderId));
-		}catch(Exception e){
-			logger.error("Failed to retrieve data layers", e);
-			datalayerResponse.setMessage("Failed to retrieve data layers");
-			return Response.ok(datalayerResponse).status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		
-		return Response.ok(datalayerResponse).status(Status.OK).build();
-	}
-
 	@Override
 	public Response getDatasources(String type) {
 		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
@@ -227,7 +259,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 	}
 
 	@Override
-	public Response postDataLayer(int workspaceId, String dataSourceId, Datalayer datalayer) {
+	public Response postDataLayer(int workspaceId, String dataSourceId, Datalayer datalayer, String username) {
 		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
 		Response response = null;
 		Datalayerfolder newDatalayerFolder = null;
@@ -239,16 +271,49 @@ public class DatalayerServiceImpl implements DatalayerService {
 			
 			String datalayerId = datalayerDao.insertDataLayer(dataSourceId, datalayer);
 
-			//Currently always uploads to Data
-			Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
-			int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
-				
-			datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
-			newDatalayerFolder = datalayerDao.getDatalayerfolder(datalayerId, folder.getFolderid());
-			
-			datalayerResponse.setDatalayerfolders(Arrays.asList(newDatalayerFolder));
-			datalayerResponse.setMessage("ok");
-			response = Response.ok(datalayerResponse).status(Status.OK).build();
+			int orgId = -1;
+			Set<DatalayerOrg> orgs = datalayer.getDatalayerOrgs();
+
+			if (orgs != null) {
+				for (DatalayerOrg org : orgs) {
+					orgId = org.getOrgid();
+					datalayerDao.insertDatalayerOrg(datalayerId, orgId);
+				}
+
+			}
+
+			int collabroomId = -1;
+			Set<DatalayerCollabroom> collabrooms = datalayer.getDatalayerCollabrooms();
+
+			if (collabrooms.size() == 1) {
+
+				// Upload to collab room only
+
+				for (DatalayerCollabroom collabroom : collabrooms) {
+					collabroomId = collabroom.getCollabroomid();
+				}
+				Response collabroomResponse = addCollabroomDatalayer(collabroomId, datalayerId, username);
+				// TODO: check collabroomResponse for success
+
+				datalayerResponse.setMessage("ok");
+				response = Response.ok(datalayerResponse).status(Status.OK).build();
+			}
+			else
+			{
+				// Upload to master datalayer list
+
+				//Currently always uploads to Data
+				//Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
+				//Currently always uploads to Upload
+				Folder folder = folderDao.getFolderByName("Upload", workspaceId);
+				int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
+				datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
+				newDatalayerFolder = datalayerDao.getDatalayerfolder(datalayerId, folder.getFolderid());
+
+				datalayerResponse.setDatalayerfolders(Arrays.asList(newDatalayerFolder));
+				datalayerResponse.setMessage("ok");
+				response = Response.ok(datalayerResponse).status(Status.OK).build();
+			}
 		}
 		catch(Exception e) {
 			logger.error("Failed to insert data layer", e);
@@ -348,6 +413,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 		if(!userOrgDao.isUserRole(username, SADisplayConstants.SUPER_ROLE_ID) &&
 				!userOrgDao.isUserRole(username, SADisplayConstants.ADMIN_ROLE_ID) &&
 				!userOrgDao.isUserRole(username, SADisplayConstants.GIS_ROLE_ID)){
+			logger.error("Permission Denied");
 			return getInvalidResponse();
 		}
 			
@@ -355,11 +421,13 @@ public class DatalayerServiceImpl implements DatalayerService {
 		GeoServer geoserver = getGeoServer(APIConfig.getInstance().getConfiguration());
 		String dataSourceId = getMapserverDatasourceId();
 		if (dataSourceId == null) {
+			logger.error("Failed to find configured NICS wms datasource");
 			throw new WebApplicationException("Failed to find configured NICS wms datasource");
 		}
 		
 		Attachment aShape = body.getAttachment("shpFile");
 		if (aShape == null) {
+			logger.error("Required attachment 'shpFile' not found");
 			throw new WebApplicationException("Required attachment 'shpFile' not found");
 		}
 		String shpFilename = aShape.getContentDisposition().getParameter("filename");
@@ -367,7 +435,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 		String layerName = batchName.concat(String.valueOf(System.currentTimeMillis()));
 		
 		//write all the uploaded files to the filesystem in a temp directory
-		Path shapesDirectory = Paths.get(fileUploadPath, "shapefiles");
+		Path shapesDirectory = Paths.get(fileUploadPath, "/shapefiles");
 		Path batchDirectory = null;
 		try {
 			Files.createDirectories(shapesDirectory);
@@ -395,6 +463,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 			try {
 				geoserverDao.removeFeaturesTable(layerName);
 			} catch (IOException ioe) { /* bury */}
+			logger.error("Failed to import shapefile", e);
 			throw new WebApplicationException("Failed to import shapefile", e);
 		} finally {
 			//always clean up our temp directory
@@ -402,6 +471,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 				try {
 					FileUtil.deleteRecursively(batchDirectory);
 				} catch (IOException e) {
+					logger.error("Failed to cleanup shapefile batch directory", e);
 					logger.error("Failed to cleanup shapefile batch directory", e);
 				}
 			}
@@ -412,6 +482,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 			try {
 				geoserverDao.removeFeaturesTable(layerName);
 			} catch (IOException e) { /* bury */}
+			logger.error("Failed to create features " + layerName);
 			throw new WebApplicationException("Failed to create features " + layerName);
 		}
 		
@@ -443,7 +514,8 @@ public class DatalayerServiceImpl implements DatalayerService {
 		datalayer.setDatalayersource(dlsource);
 		
 		String datalayerId = datalayerDao.insertDataLayer(dataSourceId, datalayer);
-		Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
+		//Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
+		Folder folder = folderDao.getFolderByName("Upload", workspaceId);
 		int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
 		datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
 
@@ -463,6 +535,154 @@ public class DatalayerServiceImpl implements DatalayerService {
 		return Response.ok(datalayerResponse).status(Status.OK).build();
 	}
 	
+	public Response postImageDataLayer(int workspaceId, String id, MultipartBody body, String username) {
+		DatalayerDocumentServiceResponse datalayerResponse = new DatalayerDocumentServiceResponse();
+		boolean imageFound = false;
+		
+		for(Attachment attachment : body.getAllAttachments()) {	
+			
+			if(attachment.getContentType().getType().contains("image")){
+				imageFound = true;
+				
+				StringBuffer filePath = new StringBuffer(
+						APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_FEATURE_PATH,"/opt/data/nics/upload/images"));
+				filePath.append("/");
+				filePath.append(id);
+				
+				System.out.println("FILE PATH : " + filePath.toString());
+				
+
+				//Path path = this.createFile(attachment, Paths.get(filePath.toString()));
+				Path path = this.createFile(attachment, filePath.toString());
+				
+				if(path != null){
+					System.out.println("PATH : " + filePath.toString() + "/" + path.getFileName());
+
+					GeoLocation location  = null;
+					
+					try {
+						location = ImageProcessor.getLocation(filePath.toString() + "/" + path.getFileName());
+					} catch (Exception e)
+					{
+						System.out.println("ERROR in DataLaterService: " + e.getMessage());
+						logger.error("Failed to get location: ",e);
+					}
+					
+					if(location != null){
+						StringBuffer locationString = new StringBuffer("POINT(");
+						locationString.append(location.getLongitude());
+						locationString.append(" ");
+						locationString.append(location.getLatitude());
+						locationString.append(")");
+						
+						System.out.println("LOCATION : " + location.getLongitude() + "," + location.getLatitude());
+						
+						String tempLoc = locationString.toString();
+						String tempfilename = id + "/" + path.getFileName().toString();
+
+						System.out.println("ID: " + id);
+						System.out.println("location: " + tempLoc);
+						System.out.println("filename: " + tempfilename);
+
+						if(datalayerDao.insertImageFeature(
+								id, locationString.toString(), id + "/" + path.getFileName().toString()) == 1){
+							datalayerResponse.setSuccess(true);
+							datalayerResponse.setCount(1);
+						}else{
+							datalayerResponse.setSuccess(false);
+							datalayerResponse.setMessage("There was an error persisting the image.");
+						}
+					}else{
+						System.out.println("No location found for the image...");
+						datalayerResponse.setSuccess(false);
+						datalayerResponse.setMessage("No location found for image.");
+					}
+				}else{
+					datalayerResponse.setSuccess(false);
+					datalayerResponse.setMessage("There was an error creating the directory.");
+				}
+			}
+			
+			if(!imageFound){
+				datalayerResponse.setSuccess(false);
+				datalayerResponse.setMessage("No image found.");
+			}
+		}
+		
+		return Response.ok(datalayerResponse).status(Status.OK).build();
+	}
+	
+	public Response finishImageLayer(boolean cancel, int workspaceId, String id, String title, int usersessionId, String username){
+
+		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
+		if(!cancel){
+			ImageLayerGenerator generator = new ImageLayerGenerator(
+					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_URL), 
+					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_USERNAME),
+					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_PASSWORD),
+					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_WORKSPACE), 
+					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_STORE));
+			
+			boolean layerCreated = generator.addImageLayer(id, title);
+			
+			System.out.println("Layer Created : " + layerCreated);
+			
+			if(layerCreated){
+				String datasourceId = datalayerDao.getDatasourceId(
+						APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_DATASOURCE_URL));
+				
+				Datalayer datalayer = new Datalayer();
+				datalayer.setBaselayer(false);
+				datalayer.setCreated(new Date());
+				datalayer.setDisplayname(title);
+				datalayer.setUsersessionid(usersessionId);
+				
+				Datalayersource datalayerSource = new Datalayersource();
+				datalayerSource.setLayername(id);
+				datalayer.setDatalayersource(datalayerSource);
+				
+				System.out.println("Post Datalayer : " + workspaceId + "," + datasourceId + "," + datalayer.getDisplayname());
+				
+				return this.postDataLayer(workspaceId, datasourceId, datalayer, username);
+			}
+		}else{
+			StringBuffer responseMessage = new StringBuffer();
+			//Remove the image files from the file system
+			StringBuffer filePath = new StringBuffer(
+					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_FEATURE_PATH,"/opt/data/nics/upload/images"));
+			filePath.append("/");
+			filePath.append(id);
+			
+			Path path = Paths.get(filePath.toString());
+			
+			try {
+			    Files.delete(path);
+			} catch (NoSuchFileException x) {
+				responseMessage.append(String.format("%s: no such" + " file or directory%n", path));
+			} catch (DirectoryNotEmptyException x) {
+				responseMessage.append(String.format("%s not empty%n", path));
+			} catch (IOException x) {
+				responseMessage.append(x.getMessage());
+			}
+			
+			if(responseMessage.length() != 0){
+				responseMessage.append(System.getProperty("line.separator"));
+			}
+			
+			//Remove all imagefeature entries from the database
+			int removed = this.datalayerDao.removeImageFeatures(id);
+			if(removed < 1){
+				responseMessage.append("The images could not be removed from the database.");
+			}
+			
+			if(responseMessage.length() != 0){
+				datalayerResponse.setMessage(responseMessage.toString());
+			}
+		}
+		
+		return Response.ok(datalayerResponse).status(Status.OK).build();
+	}
+	
 	public Response postDataLayerDocument(int workspaceId, String fileExt, int userOrgId, int refreshRate, MultipartBody body, String username){
 		
 		DatalayerDocumentServiceResponse datalayerResponse = new DatalayerDocumentServiceResponse();
@@ -477,15 +697,20 @@ public class DatalayerServiceImpl implements DatalayerService {
 		String filePath = null;
 		Boolean valid = false;
 		User user = null;
-		
+		int orgId = -1;
+		int collabroomId = -1;
+
+		logger.error("My Username is: " + username);
+		logger.error("My ext is: " + fileExt);
+
 		try{
-			
+
 			user = userDao.getUser(username);
 			Set<UserOrg> userOrgs = user.getUserorgs();
 			Iterator<UserOrg> iter = userOrgs.iterator();
 			
 			while(iter.hasNext()){
-				
+
 				UserOrg userOrg = (UserOrg)iter.next();
 				
 				if(userOrg.getUserorgid() == userOrgId && 
@@ -496,40 +721,77 @@ public class DatalayerServiceImpl implements DatalayerService {
 				}
 				
 			}
-			
+
 			if(!valid){
 				return getInvalidResponse();
 			}
 			
 			for(Attachment attachment : body.getAllAttachments()) {
+				
+				Object propValue = attachment.getObject(String.class).toString();
 	
 				if(MediaType.TEXT_PLAIN_TYPE.isCompatible(attachment.getContentType())){
-					String attachmentName = attachment.getContentDisposition().getParameter("name").toString();
-					
-					if (attachmentName.equals("usersessionid")){
-						datalayer.setUsersessionid(Integer.valueOf(attachment.getObject(String.class).toString()));
+
+					logger.error("text file");
+
+					if(attachment.getContentDisposition().getParameter("name").toString().equals("usersessionid")){
+						datalayer.setUsersessionid(Integer.valueOf(propValue.toString()));
 					}
-					else if (attachmentName.equals("displayname")){
-						datalayer.setDisplayname(attachment.getObject(String.class).toString());
+					else if(attachment.getContentDisposition().getParameter("name").toString().equals("displayname")){
+						datalayer.setDisplayname(propValue.toString());
 					}	
-					else if (attachmentName.equals("baselayer")){
-						datalayer.setBaselayer(Boolean.parseBoolean(attachment.getObject(String.class).toString()));
+					else if(attachment.getContentDisposition().getParameter("name").toString().equals("baselayer")){
+						datalayer.setBaselayer(Boolean.parseBoolean(propValue.toString()));
+					}
+					else if(attachment.getContentDisposition().getParameter("name").equals("orgid")) {
+						try
+						{
+							orgId = Integer.parseInt(propValue.toString());
+						} catch (NumberFormatException ex)
+						{
+							// orgId isn't an integer; datalayer should not be restricted to an organization
+						}
+					}
+					else if (attachment.getContentDisposition().getParameter("name").equals("collabroomId")) {
+						try
+						{
+							collabroomId = Integer.parseInt(propValue.toString());
+							System.out.println("============= collabroomId="+collabroomId);
+						} catch (NumberFormatException ex)
+						{
+							//
+						}
 					}
 				}
 				else{
+
+					logger.error("not text");
+
 					String attachmentFilename = attachment.getContentDisposition().getParameter("filename").toLowerCase();
 					if (attachmentFilename.endsWith(".kmz")){
+						logger.error("kmz file");
 						filePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.KMZ_UPLOAD_PATH,"/opt/data/nics/upload/kmz");
 					} else if (attachmentFilename.endsWith(".gpx")){
+						logger.error("gpx file");
 						filePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.GPX_UPLOAD_PATH,"/opt/data/nics/upload/gpx");
 					} else if (attachmentFilename.endsWith(".json") || attachmentFilename.endsWith(".geojson")){
+						logger.error("geojson file");
 					 	filePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.JSON_UPLOAD_PATH,"/opt/data/nics/upload/geojson");
 					} else if (attachmentFilename.endsWith(".kml")){
+						logger.error("kml file");
 						filePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.KML_UPLOAD_PATH,"/opt/data/nics/upload/kml");
 					}
 					
 					if(filePath != null){
-						doc = getDocument(attachment, Paths.get(filePath));
+						try {
+							doc = getDocument(attachment, Paths.get(filePath));
+							} catch (Exception e)
+							{
+								logger.error("Document could not be created",e);
+							}
+					} else
+					{
+						logger.error("File path is null!");
 					}
 				}
 			}
@@ -611,18 +873,35 @@ public class DatalayerServiceImpl implements DatalayerService {
 					fileName = doc.getFilename();
 				}
 				
+			} else
+			{
+				logger.error("Doc is null");
 			}
 			
 			if (uploadedDataLayer) {
+
 				datalayer.getDatalayersource().setLayername(fileName);
 				
 				String datalayerId = datalayerDao.insertDataLayer(dataSourceId, datalayer);
-				
-				Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
-				int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
-					
-				datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
-				newDatalayerFolder = datalayerDao.getDatalayerfolder(datalayerId, folder.getFolderid());
+
+				if (orgId >= 0)
+				{
+					datalayerDao.insertDatalayerOrg(datalayerId, orgId);
+				}
+
+				if (collabroomId >= 0)
+				{
+					addCollabroomDatalayer(collabroomId, datalayerId, username);
+				}
+				else {
+
+					//Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
+					//int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
+					Folder folder = folderDao.getFolderByName("Upload", workspaceId);
+					int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
+					datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
+					newDatalayerFolder = datalayerDao.getDatalayerfolder(datalayerId, folder.getFolderid());
+				}
 
 				datalayerResponse.setDatalayerfolders(Arrays.asList(newDatalayerFolder));
 				datalayerResponse.setMessage("ok");
@@ -673,6 +952,65 @@ public class DatalayerServiceImpl implements DatalayerService {
 		}
 
 		return Response.ok().status(Status.INTERNAL_SERVER_ERROR).build();
+	}
+
+	public Response addCollabroomDatalayer(int collabroomId, String datalayerId, String username)
+	{
+		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
+		Response response = null;
+		DatalayerCollabroom datalayerCollabroom = null;
+		User user = null;
+		int userid;
+
+		try {
+
+			user = userDao.getUser(username);
+			userid = user.getUserId();
+			
+			datalayerCollabroom = datalayerDao.insertCollabRoomDatalayer(collabroomId, datalayerId, userid);
+			notifyNewCollabroom(datalayerCollabroom);
+
+			datalayerResponse.setMessage("ok");
+			response = Response.ok(datalayerResponse).status(Status.OK).build();
+		}
+		catch (Exception ex) {
+			logger.error("Failed to add collabroom datalayer", ex);
+			datalayerResponse.setMessage("failed");
+			response = Response.ok(datalayerResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+
+		return response;
+	}
+	
+	public Response deleteCollabroomDataLayer(ArrayList<DatalayerCollabroom> datalayerCollabrooms){
+		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
+		Response response = null;
+		boolean deletedCollabroomDatalayer = false;
+
+		try {
+			
+			deletedCollabroomDatalayer = datalayerDao.deleteCollabRoomDatalayers(datalayerCollabrooms);
+
+			if(deletedCollabroomDatalayer){
+				notifyDeleteCollabroom(datalayerCollabrooms);
+				datalayerResponse.setCount(1);
+				datalayerResponse.setMessage("ok");
+				response = Response.ok(datalayerResponse).status(Status.OK).build();	
+			}
+			else{
+				datalayerResponse.setMessage("Failed to delete collabroomdatalayer");
+				response = Response.ok(datalayerResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+			}
+			
+		}
+		catch (Exception ex) {
+			logger.error("Failed to add collabroom datalayer", ex);
+			datalayerResponse.setMessage("failed");
+			response = Response.ok(datalayerResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
+		
+		return response;
 	}
 	
 	private String requestToken(String internalUrl, String username, String password){
@@ -726,14 +1064,58 @@ public class DatalayerServiceImpl implements DatalayerService {
 			return md.digest();	
 		}
 	}
+
 	
 	private Document getDocument(Attachment attachment, Path directory) {
-		Path tempPath = null, path = null;
 		
+		Path path = this.createFile(attachment, directory.toString());
+		
+		Document doc = new Document();
+		doc.setDisplayname(attachment.getContentDisposition().getParameter("filename"));
+		doc.setFilename(path.getFileName().toString());
+		doc.setFiletype(attachment.getContentType().toString());
+		doc.setCreated(new Date());
+		return doc;
+	}
+
+
+	/*
+	private Path createFile(Attachment attachment, Path directory){	
+		Path tempPath = null, path = null;
 		try {
 			Files.createDirectories(directory);
 
-			tempPath = Files.createTempFile(directory, null, null);
+			//tempPath = Files.createTempFile(directory, null, null); 
+
+			File tempFile;
+
+			try {
+				
+				tempFile = directory.toFile();
+				logger.error("createFile Path: " + directory.toFile().getAbsolutePath());
+
+			} catch (Exception e)
+			{
+				logger.error("Exception in createFile.  Failed to convert path to file", e);
+				return null;
+			}
+
+			try {
+
+
+				tempFile = File.createTempFile(null, null, directory.toFile());
+				logger.error("Created File: " + tempFile.getAbsolutePath());
+
+				tempPath = tempFile.toPath();
+				logger.error("Converted to Path: " + tempPath.toString());
+
+			} catch (Exception e)
+			{
+				logger.error("Exception in createFile.  Failed to create temp file", e);
+				return null;
+			}
+
+
 			byte[] digest = writeAttachmentWithDigest(attachment, tempPath, "MD5");
 			
 			String filename = new BigInteger(1, digest).toString();
@@ -744,14 +1126,15 @@ public class DatalayerServiceImpl implements DatalayerService {
 			path = directory.resolve(filename);
 			path = Files.move(tempPath, path, StandardCopyOption.REPLACE_EXISTING);
 		
+			// **** Does not work for Windows ****
 			// Set proper file permissions on this file.
-			Files.setPosixFilePermissions(path, EnumSet.of(
+			/*Files.setPosixFilePermissions(path, EnumSet.of(
 					PosixFilePermission.OWNER_READ,
 					PosixFilePermission.OWNER_WRITE,
 					PosixFilePermission.GROUP_READ,
 					PosixFilePermission.GROUP_WRITE,
 					PosixFilePermission.OTHERS_READ
-				));
+				));*//*
 		} catch (IOException|NoSuchAlgorithmException e) {
 			logger.error("Failed to save file attachment", e);
 			return null;
@@ -764,13 +1147,76 @@ public class DatalayerServiceImpl implements DatalayerService {
 				}
 			}
 		}
+		return path;
+	} */
+
+
+	private Path createFile(Attachment attachment, String directory){	
+		Path path = null, tempPath = null;
+		File tempFile = null, dir = null;
+		String filename = null;
+
+		try {
+
+			try {
+
+				logger.error("PATH: " + directory);
+				logger.error("Temp PATH: " + tempDir);
+
+				// Making temp file 
+				tempFile = File.createTempFile("img_", null);
+				tempPath = tempFile.toPath();
+
+				// Creating directory for upload
+				dir = new File(directory);
+				dir.mkdirs();
+				
+				/*tempFile.setExecutable(1,1);
+				tempFile.setReadable(1,1);
+				tempFile.setWritable(1,1);*/
+
+				logger.error("Created File: " + tempFile.getAbsolutePath());
+			} catch (Exception e)
+			{
+				logger.error("Exception in createFile.  Failed to create temp file", e);
+				return null;
+			}
+
+
+			byte[] digest = writeAttachmentWithDigest(attachment, tempPath, "MD5");
+			
+			filename = new BigInteger(1, digest).toString();
+			String ext = getFileExtension(attachment);
+			if (ext != null) {
+				filename += "." + ext;
+			}
+
+			path = dir.toPath();
+			path = path.resolve(filename);
+			path = Files.move(tempPath, path, StandardCopyOption.REPLACE_EXISTING);
 		
-		Document doc = new Document();
-		doc.setDisplayname(attachment.getContentDisposition().getParameter("filename"));
-		doc.setFilename(path.getFileName().toString());
-		doc.setFiletype(attachment.getContentType().toString());
-		doc.setCreated(new Date());
-		return doc;
+			// **** Does not work for Windows ****
+			// Set proper file permissions on this file.
+			/*Files.setPosixFilePermissions(path, EnumSet.of(
+					PosixFilePermission.OWNER_READ,
+					PosixFilePermission.OWNER_WRITE,
+					PosixFilePermission.GROUP_READ,
+					PosixFilePermission.GROUP_WRITE,
+					PosixFilePermission.OTHERS_READ
+				));*/
+		} catch (IOException|NoSuchAlgorithmException e) {
+			logger.error("Failed to save file attachment", e);
+			return null;
+		} finally {
+			//cleanup files
+			if (tempPath != null) {
+				File file = tempPath.toFile();
+				if (file.exists()) {
+					file.delete();
+				}
+			}
+		}
+		return path;
 	}
 
 	/** Utility method for copying (and possibly translating) a KML input stream to an output stream. */
@@ -903,6 +1349,24 @@ public class DatalayerServiceImpl implements DatalayerService {
 			getRabbitProducer().produce(topic, message);
 		}
 	}
+
+	private void notifyNewCollabroom(DatalayerCollabroom datalayerCollabroom) throws IOException {
+		if (datalayerCollabroom != null) {
+			String topic = String.format("iweb.NICS.collabroom.%d.datalayer.new", datalayerCollabroom.getCollabroomid());
+			ObjectMapper mapper = new ObjectMapper();
+			String message = mapper.writeValueAsString(datalayerCollabroom);
+			getRabbitProducer().produce(topic, message);
+		}
+	}
+	
+	private void notifyDeleteCollabroom(ArrayList<DatalayerCollabroom> datalayerCollabrooms) throws IOException {
+		if (datalayerCollabrooms != null) {
+			String topic = String.format("iweb.NICS.collabroom.%d.datalayer.delete", datalayerCollabrooms.get(0).getCollabroomid());
+			ObjectMapper mapper = new ObjectMapper();
+			String message = mapper.writeValueAsString(datalayerCollabrooms);
+			getRabbitProducer().produce(topic, message);
+		}
+	}
 	
 	private RabbitPubSubProducer getRabbitProducer() throws IOException {
 		if (rabbitProducer == null) {
@@ -919,5 +1383,4 @@ public class DatalayerServiceImpl implements DatalayerService {
 		return Response.status(Status.BAD_REQUEST).entity(
 				Status.FORBIDDEN.getReasonPhrase()).build();
 	}
-	
 }

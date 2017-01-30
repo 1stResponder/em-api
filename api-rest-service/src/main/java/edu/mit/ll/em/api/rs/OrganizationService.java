@@ -29,6 +29,7 @@
  */
 package edu.mit.ll.em.api.rs;
 
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -96,4 +97,21 @@ public interface OrganizationService {
 			@PathParam("orgId") int orgId,
 			@PathParam("orgTypeId") int orgTypeId);
 
+	@GET
+	@Produces(MediaType.APPLICATION_JSON)
+	@Path("/caps")
+	public Response getCaps();
+	
+	@GET
+	@Produces(MediaType.APPLICATION_JSON)
+	@Path("/orgcaps/{orgId}")
+	public Response getOrgCaps(@PathParam("orgId") int orgId);
+	
+	@POST
+	@Produces(MediaType.APPLICATION_JSON)
+	@Path("/orgcaps/{orgCapId}")
+	public Response postOrgCaps(@PathParam("orgCapId") int orgCapId,
+			 @QueryParam("activeWeb") String activeWeb,
+			 @QueryParam("activeMobile") String activeMobile);
+	
 }

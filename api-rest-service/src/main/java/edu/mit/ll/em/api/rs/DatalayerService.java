@@ -29,6 +29,8 @@
  */
 package edu.mit.ll.em.api.rs;
 
+import java.util.ArrayList;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -40,6 +42,9 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+
+import edu.mit.ll.nics.common.entity.CollabRoom;
+import edu.mit.ll.nics.common.entity.datalayer.DatalayerCollabroom;
 
 import org.apache.cxf.jaxrs.ext.multipart.Multipart;
 import org.apache.cxf.jaxrs.ext.multipart.MultipartBody;
@@ -54,6 +59,11 @@ public interface DatalayerService {
 	@Path("/{folderId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getDatalayers(@PathParam("folderId") String folderId);
+	
+	@GET
+	@Path("/collabroom/{collabRoomId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getCollabRoomDatalayers(@PathParam("collabRoomId") int collabRoomId);
 	
 	@GET
 	@Path("/tracking")
@@ -80,7 +90,8 @@ public interface DatalayerService {
 	public Response postDataLayer(
 			@PathParam("workspaceId") int workspaceId,
 			@PathParam("dataSourceId") String dataSourceId,
-			Datalayer datalayer);
+			Datalayer datalayer,
+			@QueryParam("username") String username);
 	
 	@DELETE
 	@Path("/sources/{dataSourceId}/layer")
@@ -107,7 +118,7 @@ public interface DatalayerService {
 			@PathParam("userOrgId") int userOrgId,
 			@Multipart(value = "refreshrate", required = false) int refreshRate,
 			MultipartBody body,
-			@HeaderParam("CUSTOM-uid") String username);
+			@QueryParam("username") String username);
 	
 	@POST
 	@Path("/shapefile")
@@ -117,7 +128,29 @@ public interface DatalayerService {
 			@PathParam("workspaceId") int workspaceId,
 			@Multipart("displayName") String displayName,
 			MultipartBody body,
+			@QueryParam("username") String username);
+	
+	@POST
+	@Path("/image")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response postImageDataLayer(
+			@PathParam("workspaceId") int workspaceId,
+			@Multipart("id") String id,
+			MultipartBody body,
 			@HeaderParam("CUSTOM-uid") String username);
+	
+	@POST
+	@Path("/image/finish")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response finishImageLayer(
+			@QueryParam("cancel") boolean cancel,
+			@PathParam("workspaceId") int workspaceId,
+			@QueryParam("id") String id,
+			@QueryParam("title") String title,
+			@QueryParam("usersessionid") int usersessionId,
+			@QueryParam("username") String username);
 	
 	
 	@GET
@@ -132,6 +165,20 @@ public interface DatalayerService {
 	public Response postDatasource(
 			@PathParam("type") String type,
 			Datasource dataSource);
+
+	@POST
+	@Path("/collabroom/{collabroomId}/{datalayerId}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response addCollabroomDatalayer(
+			@PathParam("collabroomId") int collabroomId,
+			@PathParam("datalayerId") String datalayerId,
+			@QueryParam("username") String username);
 	
+	@POST
+	@Path("/collabroom")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response deleteCollabroomDataLayer(ArrayList<DatalayerCollabroom> collabRoomDataLayerId );
 }
 

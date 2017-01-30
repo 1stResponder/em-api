@@ -142,7 +142,7 @@ public class MapMarkupDAO extends BaseDAO {
 
 			// Assemble and add the CollabroomFeature entity.
 			CollabroomFeature collabroomFeature = new CollabroomFeature(mapMarkup.getCollabRoomId(),
-					nicsFeature.getFeatureid());
+					nicsFeature.getFeatureId());
 			sadMsg.addEntity(collabroomFeature);
 
 			// Assemble and add the messageData needed to trigger a COP refresh.
@@ -319,7 +319,7 @@ public class MapMarkupDAO extends BaseDAO {
 			MapMarkup.Feature pf = new MapMarkup.Feature();			
 			pf.dashStyle = f.getDashStyle();
 			pf.featureAttrs = f.getFeatureattributes();
-			pf.featureId = f.getFeatureid();
+			pf.featureId = f.getFeatureId();
 			pf.fillColor = f.getFillColor();
 			pf.graphic = f.getGraphic();	
 			pf.graphicHeight = f.getGraphicHeight();
@@ -405,8 +405,8 @@ public class MapMarkupDAO extends BaseDAO {
 			// list, do not bother grabbing that one.
 			neededFeatureIds = new HashSet<String>(movedFeatureIds);
 			for (Feature f : features) {
-				if (neededFeatureIds.contains(f.getFeatureid())) {
-					neededFeatureIds.remove(f.getFeatureid());
+				if (neededFeatureIds.contains(f.getFeatureId())) {
+					neededFeatureIds.remove(f.getFeatureId());
 				}
 			}			
 		}
@@ -463,7 +463,7 @@ public class MapMarkupDAO extends BaseDAO {
 			ret.setFeatureattributes(f.featureAttrs);
 		}
 		if (f.featureId != null) {
-			ret.setFeatureid(f.featureId);
+			ret.setFeatureId(f.featureId);
 		}
 		if (f.fillColor != null) {
 			ret.setFillColor(f.fillColor);
@@ -554,7 +554,7 @@ public class MapMarkupDAO extends BaseDAO {
 		ret.setUsersessionid(EntityCacheMgr.getInstance().getUserSessionId(u.getUserId()));
 		ret.setVersion(PAPIConfig.getInstance().getConfiguration()
 				.getString("phinics.papi.rabbitmq.msgver", "1.2.3"));
-		ret.setFeatureid(UUID.randomUUID().toString().toUpperCase());
+		ret.setFeatureId(UUID.randomUUID().toString().toUpperCase());
 		return ret;
 	}
 
@@ -686,7 +686,7 @@ public class MapMarkupDAO extends BaseDAO {
 		
 		Set<String> deletedFeatureIDs = new HashSet<String>();
 		for(DeletedFeature df : deletedFeatures) {
-			deletedFeatureIDs.add(df.getFeatureid());
+			deletedFeatureIDs.add(df.getFeatureId());
 		}
 		
 		return deletedFeatureIDs;

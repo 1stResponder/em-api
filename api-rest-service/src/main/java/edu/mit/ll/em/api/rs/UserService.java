@@ -163,6 +163,15 @@ public interface UserService {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getUser(@PathParam("userId") int userId);
 
+	@GET
+	@Path(value = "/usersessionId/{usersessionId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getUserBySessionId(@PathParam("usersessionId") long usersessionId);
+	@GET
+	@Path(value = "/pastUsersessionId/{usersessionId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getUserByPastSessionId(@PathParam("usersessionId") long usersessionId);
+	
 	/*@DELETE
 	@Path(value = "/{userId}")
 	@Produces(MediaType.APPLICATION_JSON)

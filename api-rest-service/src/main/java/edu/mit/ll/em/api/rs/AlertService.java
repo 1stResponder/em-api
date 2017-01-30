@@ -29,46 +29,52 @@
  */
 package edu.mit.ll.em.api.rs;
 
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import edu.mit.ll.nics.common.entity.Alert;
+import edu.mit.ll.nics.common.entity.AlertUser;
 
-@Path("/collab/export")
-public interface DatalayerExport {
+
+@Path("/alert")
+public interface AlertService {
+		
+	@POST
+	@Path("/user") 
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response postUserAlert(
+			AlertUser alert,
+			@HeaderParam("custom-uid") String username);
 	
-	/*@GET
-	@Path(value = "/{collabroomId}/incident/{incidentId}/user/{userId}/type/{exportType}/format/{exportFormat}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getDatalayer(
-				@PathParam("userId") long userId,
-				@PathParam("collabroomId") int collabroomId, 
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportType") String exportType,
-				@PathParam("exportFormat") String exportFormat,
-				@HeaderParam("CUSTOM-uid") String username);*/
+	@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response postAlert(
+			Alert alert,
+			@HeaderParam("custom-uid") String username);
 
 	@GET
-	@Path(value = "/{collabroomId}/incident/{incidentId}/user/{userId}/type/{exportType}/format/{exportFormat}/username/{username}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getDatalayer(
-				@PathParam("userId") long userId,
-				@PathParam("collabroomId") int collabroomId, 
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportType") String exportType,
-				@PathParam("exportFormat") String exportFormat,
-				@PathParam("username") String username);
+	@Path("/{incidentId}/{userId}") 
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getAlerts(
+			@PathParam("incidentId") int incidentId,
+			@PathParam("userId") int userId,
+			@HeaderParam("custom-uid") String username);
 	
-	@GET
-	@Path(value = "/incident/{incidentId}/user/{userId}/format/{exportFormat}")
-	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response getCapabilities(
-				@PathParam("userId") int userId,
-				@PathParam("incidentId") int incidentId,
-				@PathParam("exportFormat") String exportFormat);
+	@DELETE
+	@Path("/{datasourceId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response deleteAlert(
+			@PathParam("datasourceId") int datasourceId,
+			@HeaderParam("custom-uid") String username);
 	
 }

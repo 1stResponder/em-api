@@ -47,7 +47,9 @@ public class APIConfig {
 	
 	public static final String NEW_USER_ALERT_EMAIL = "em.api.user.alert.email";
 	public static final String NEW_USER_ENABLED_EMAIL = "em.api.newuser.enabled.email";
-	public static final String NEW_USER_BODY_EMAIL = "em.api.newuser.enabled.body";
+
+	public static final String NEW_USER_BODY_EMAIL = "em.api.newuser.enabled.body"; // not used anywhere
+
 	public static final String NEW_USER_BODY_TEMPLATE = "em.api.newuser.enabled.template";
 	public static final String NEW_USER_BODY_SUBJECT = "em.api.newuser.enabled.subject";
 	public static final String NEW_INCIDENT_USERS_EMAIL = "em.api.new.incident.emails";
@@ -58,14 +60,12 @@ public class APIConfig {
 	public static final String RABBIT_HOSTNAME_KEY = "em.api.rabbitmq.hostname";
 	public static final String RABBIT_USERNAME_KEY = "em.api.rabbitmq.username";
 	public static final String RABBIT_USERPWD_KEY = "em.api.rabbitmq.userpwd";
-	public static final String RABBIT_EXCHANGENAME_KEY = "em.api.exchange.name";
+	public static final String RABBIT_EXCHANGENAME_KEY = "em.api.rabbitmq.exchange.name";
 	public static final String RABBIT_MAX_CONN_TRIES = "em.api.rabbitmq.maxconntries";
-	public static final String RABBIT_FAILOVER_HOSTNAME = "em.api.rabbitmq.failover.hostname";
-	public static final String RABBIT_BINDING_KEYS = "em.api.rabbitmq.bindingkeys";
-	public static final String RABBIT_MSG_VERSION = "em.api.rabbitmq.msgver";
+	//public static final String RABBIT_MSG_VERSION = "em.api.rabbitmq.msgver";
 	
-	public static final String CHAT_STALEMSG_FACTOR_STRING = "em.api.resource.chat.stalemsg.factor.string";
-	public static final String CHAT_STALEMSG_FACTOR_MINS = "em.api.resource.chat.stalemsg.factor.mins";
+	//public static final String CHAT_STALEMSG_FACTOR_STRING = "em.api.resource.chat.stalemsg.factor.string";
+	//public static final String CHAT_STALEMSG_FACTOR_MINS = "em.api.resource.chat.stalemsg.factor.mins";
 	
 	public static final String MDT_TOPIC = "em.api.service.mdt.topic";
 	public static final String MDT_NICS_SCHEMA_URI = "em.api.service.mdt.nicsSchemaLocationURI";
@@ -96,10 +96,10 @@ public class APIConfig {
 	public static final String KMZ_UPLOAD_PATH = "em.api.service.kmz.upload.path";
 	public static final String GPX_UPLOAD_PATH = "em.api.service.gpx.upload.path";
 	public static final String JSON_UPLOAD_PATH = "em.api.service.geojson.upload.path";
+	public static final String IMAGE_FEATURE_PATH = "em.api.service.image.feature.upload.path";
 	
 	// KML Export
 	public static final String KML_EXPORT_URL = "em.api.service.export.kmlExportURL";
-	public static final String KML_TEMPLATE_PATH = "em.api.service.export.kmlTemplatePath";
 	
 	// DataLayerBreadCrumbs
 	public static final String EXPORT_MAPSERVER_URL = "em.api.service.export.mapserverURL";
@@ -110,8 +110,15 @@ public class APIConfig {
 	public static final String EXPORT_REST_URL = "/rest";
 	public static final String EXPORT_WEBSERVER_URL = "em.api.service.export.webserverURL";
 	
+	public static final String IMAGE_LAYER_MAPSERVER_URL = "em.api.service.image.layer.mapserver.url";		
+	public static final String IMAGE_LAYER_MAPSERVER_USERNAME = "em.api.service.image.layer.mapserver.username";
+	public static final String IMAGE_LAYER_MAPSERVER_PASSWORD = "em.api.service.image.layer.mapserver.password";
+	public static final String IMAGE_LAYER_MAPSERVER_WORKSPACE = "em.api.service.image.layer.mapserver.workspace";
+	public static final String IMAGE_LAYER_MAPSERVER_STORE = "em.api.service.image.layer.mapserver.store";
+	
 	public static final String IMPORT_SHAPEFILE_WORKSPACE = "em.api.service.import.shapefileWorkspace";
 	public static final String IMPORT_SHAPEFILE_STORE = "em.api.service.import.shapefileStore";
+	public static final String IMAGE_LAYER_DATASOURCE_URL = "em.api.service.image.layer.datasource.url";
 
 
 	public static final String INCIDENT_MAP = "em.api.collabroom.incident.map";
@@ -119,6 +126,11 @@ public class APIConfig {
 	// Passwords
 	public static final String PASSWORD_PATTERN = "em.api.password.pattern";
 	public static final String PASSWORD_REQUIREMENTS = "em.api.password.requirements";
+
+	
+	// Broadcast Alerts	
+	public static final String BROADCASTALERTS_BASETOPIC = "em.api.broadcastalerts.basetopic";
+	public static final String BROADCASTALERTS_BASETOPIC_DEFAULT = "iweb.NICS.broadcastalerts.user.";
 	
 	private Configuration config;
 	

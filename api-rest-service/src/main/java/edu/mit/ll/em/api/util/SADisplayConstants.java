@@ -30,6 +30,7 @@
 package edu.mit.ll.em.api.util;
 
 public final class SADisplayConstants {
+
 	//CONTACT TYPES
 	public static final String EMAIL_TYPE = "email";
 	public static final String PHONE_HOME_TYPE = "phone_home";
@@ -58,6 +59,7 @@ public final class SADisplayConstants {
 	//TABLE NAMES
 	public static final String USERSESSION_TABLE = "Usersession";
 	public static final String CURRENT_USERSESSION_TABLE = "CurrentUserSession";
+	public static final String CHAT_TABLE = "Chat";
 	public static final String COLLAB_ROOM_TABLE = "CollabRoom";
 	public static final String COLLABROOM_FEATURE = "CollabroomFeature";
 	public static final String INCIDENT_TABLE = "Incident";
@@ -65,8 +67,10 @@ public final class SADisplayConstants {
 	public static final String SEAM_USER_TABLE = "SeamUser";
 	public static final String USER_ORG_TABLE = "UserOrg";
 	public static final String ORG_ORGTYPE_TABLE = "org_orgtype";
+	public static final String ORG_ORGTYPE_ID = "org_orgtypeid";
 	public static final String ORG_TYPE_TABLE = "OrgType";
 	public static final String FEATURE = "Feature";
+	public static final String FEATURE_TABLE = "feature";
 	public static final String ROOT_FOLDER_TABLE = "Rootfolder";	
 	public static final String FOLDER_TABLE = "Folder";
 	public static final String CONTACT_TYPE_TABLE = "ContactType";
@@ -87,9 +91,15 @@ public final class SADisplayConstants {
 	public static final String USER_FEATURE = "UserFeature";
 	public static final String INCIDENT_TYPE_TABLE = "incidenttype";
 	public static final String INCIDENT_INCIDENTTYPE_TABLE = "incident_incidenttype";
+	public static final String USER_ORG_WORKSPACE_TABLE = "userorg_workspace";
+    public static final String UXOREPORT_TABLE = "Uxoreport";
+	public static final String DATALAYER_ORG_TABLE = "datalayer_org";
 	
 	//COMMON COLUMN NAMES
 	public static final String CREATED = "created";
+
+	//CHAT COLUMNS
+	public static final String CHAT_ID = "chatid";
 	
 	//COLLAB ROOM COLUMNS
 	public static final String COLLAB_ROOM_ID = "collabroomid";
@@ -105,6 +115,8 @@ public final class SADisplayConstants {
 	//USER COLUMNS
 	public static final String USER_ID = "userId";
 	public static final String USER_NAME = "username";
+	public static final String FIRST_NAME = "firstname";
+	public static final String LAST_NAME = "lastname";
 	public static final String ENABLED = "enabled";
 	
 	//MESSAGE ARCHIVE COLUMNS
@@ -119,6 +131,7 @@ public final class SADisplayConstants {
 	//USERSESSION CONSTANTS
 	public static final String USERSESSION_ID ="usersessionid";
 	public static final String SESSION_ID = "sessionid";
+	public static final String LOGGED_OUT = "loggedout";
 	
 	//DATASOURCE TYPE CONSTANTS
 	public static final String DATASOURCE_TYPE_NAME = "typename";
@@ -126,6 +139,10 @@ public final class SADisplayConstants {
 	
 	//ORGANIZATION CONSTANTS
 	public static final String ORG_ID = "orgId";
+	
+	//USER ORG WORKSPACE COLUMN NAMES
+	public static final String USER_ORG_WORKSPACE_ID = "userorg_workspace_id";
+	public static final String DEFAULT_ORG = "defaultorg";
 	
 	//FOLDER COLUMN NAMES
 	public static final String FOLDER_ID = "folderid";
@@ -146,6 +163,12 @@ public final class SADisplayConstants {
 	public static final String FORM_TYPE_NAME = "formtypename";
 	public static final String FORM_TYPE_ID = "formtypeid";
 	public static final String SEQ_TIME = "seqtime";
+
+	//ORG DATALAYER COLUMN NAMES
+	public static final String DATALAYER_ORG_ID = "datalayer_orgid";
+
+	//COLLABROOM DATALAYER COLUMN NAMES
+	public static final String COLLABROOM_DATALAYER_ID = "collabroomdatalayerid";
 		
 	// LDDRS-648
 	// FORM TYPE CONSTANTS
@@ -237,6 +260,8 @@ public final class SADisplayConstants {
 	public static final String SEQ_NUM = "seqnum";
 	public static final String DOCUMENT_TABLE = "document";
 	public static final String DOCUMENT_INCIDENT_TABLE = "document_incident";
+	public static final String DOCUMENT_FEATURE_TABLE = "document_feature";
+	public static final String DOCUMENT_FEATURE_ID = "document_featureid";
 	public static final String DOCUMENT_ID = "documentid";
 	public static final String FILENAME = "filename";
 	public static final String FILETYPE = "filetype";
@@ -253,7 +278,7 @@ public final class SADisplayConstants {
 	public static final String CONTACT_SEQUENCE_TABLE = "contact_seq";
 	public static final String USER_ORG_SEQUENCE_TABLE = "user_org_seq";
 	public static final String COLLABROOM_FEATURE_TABLE = "collabroomfeature";
-	public static final String COLLAB_ROOM_FEATURE_ID = "collabroomfeature.collabroomid";
+	public static final String COLLAB_ROOM_FEATURE_ID = "collabroomfeatureid";
 	public static final String USER_FEATURE_TABLE = "userfeature";
 	public static final String COLLAB_ROOM_PERMISSION_ID = "collabroompermissionid";
 	public static String EXISTING_SESSION_MSG = "User has an existing session. Removing...";
@@ -281,6 +306,7 @@ public final class SADisplayConstants {
 	public static final String DEFAULT_LON = "defaultlongitude";
 	public static final String INCIDENT_TYPE_NAME = "incidenttypename";
 	public static final String STATE = "state";
+	public static final String COUNTRY = "country";
 	public static final String IMAGE_FORMAT = "imageformat";
 	public static final String NATIVE_PROJECTION = "nativeprojection";
 	public static final String TILE_GRID_SET = "tilegridset";
@@ -290,6 +316,7 @@ public final class SADisplayConstants {
 	public static final String ROOT_FOLDER_ID = "rootid";
 	public static final String USER_FEATURE_ID = "userfeatureid";
 	public static final String LAST_UPDATE = "lastupdate";
+	public static final String UNIT = "unit";
 	public static final String DESCRIPTION = "description";
 	public static final String RANK = "rank";
 	public static final String JOB_TITLE = "jobtitle";
@@ -297,11 +324,10 @@ public final class SADisplayConstants {
 	public static final String WORKSPACE_ID = "workspaceid";
 	public static final String WORKSPACE_NAME = "workspacename";
 	public static final String WORKSPACE_DAO ="workspaceDao";
+	public static final String ROOTFOLDER_WORKSPACEID = "rootfolder.workspaceid";
 	public static final String LOG_WORKSPACE_TABLE = "log_workspace";
 	public static final String LOG_SEQ = "log_seq";
 	public static final String LOG_WORKSPACE_ID = "log_workspace_id";
-	public static final String USER_ORG_WORKSPACE_TABLE = "userorg_workspace";
-	public static final String USER_ORG_WORKSPACE_ID = "userorg_workspace_id";
 	public static final String SYSTEM_ROLE_WORKSPACE_TABLE = "systemrole_workspace";
 	public static final Object ARCGIS_CACHE = "ARCGISCACHE";
 	public static final String DATALAYERFOLDER_INDEX = "datalayerfolder.index";
@@ -309,6 +335,48 @@ public final class SADisplayConstants {
 	public static final String USER_ENABLED = USER_ESCAPED + ".enabled";
 	public static final String USER_ENABLED_PARAM = "user_enabled";
 	public static final String PASSWORD_CHANGED = "passwordchanged";
+	public static final String SYSTEM_WORKSPACE = "system_workspace";
+	public static final String SYSTEM = "nicssystem";
+	public static final String SYSTEM_ID = "systemid";
+	public static final String SYSTEM_NAME = "systemname";
+	public static final String SYSTEM_TABLE = "nicssystem";
+	public static final String WORKSPACE_ENABLED = "workspace.enabled";
+	public static final String SYSTEM_ENABLED = "nicssystem.enabled";
+	public static final String BOUNDS = "bounds";
+	public static final String FEATURE_COLLABROOM = "collabroomfeature";
+	public static final String FEATURE_USER = "userfeature";
+	public static final String DELETED = "deleted";
+	public static final String DEFAULT = "default";
+	public static final String USER_TABLE = "\"user\"";
+	public static final String COUNTY = "county";
+	public static final String LEGEND = "legend";
+    public static final String UXOREPORT_LOCATION = "location";
+    public static final String UXOREPORTID = "uxoreportid";
 	public static final String INCIDENT_MAP = "Incident Map";
-	public static final Object PASSWORD = "password";
+	public static final String PASSWORD = "password";
+	public static final String INCIDENT_CREATED = "incident.created";
+	public static final String CAP_ID = "capid";
+	public static final String NAME = "name";
+	public static final String ORG_CAP_ID = "orgcapid";
+	public static final String ACTIVE_MOBILE = "activemobile";
+	public static final String ACTIVE_WEB = "activeweb";
+	public static final String ORG_CAP_TABLE = "orgcap";
+	public static final Object WEB = "web";
+	public static final Object MOBILE = "mobile";
+	public static final String CAP_TABLE = "cap";
+	public static final Object TRACKING = "Tracking";
+	public static final Object DATALAYER_DISPLAYNAME = "datalayer.displayname";
+
+	public static final String COLLAB_ROOM_DATALAYER_ID = "collabroomdatalayerid";
+	public static final String COLLAB_ROOM_DATALAYER_TABLE = "collabroomdatalayer";
+	public static final String ALERT_SEQUENCE_TABLE = "alert_seq";
+	public static final String ALERT_ID = "alertid";
+	public static final String ALERT_TABLE = "alert";
+	public static final String ALERTUSER_TABLE = "alertuser";
+	public static final String ALERT_USER_ID = "alertuserid";
+	public static final String ALERT_USER_SEQUENCE_TABLE = "alert_user_seq";
+	public static final String ALERTUSER_USER_ID = "alertuser.userid";
+	public static final String IMAGE_FEATURE_TABLE = "imagefeature";
+	public static final String LOCATION = "location";
+	public static final String IMAGE_ID = "imageid";
 }

@@ -32,22 +32,13 @@ package edu.mit.ll.em.api.rs;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import edu.mit.ll.nics.common.entity.datalayer.Datalayer;
-import edu.mit.ll.nics.common.entity.datalayer.DatalayerOrg;
-import edu.mit.ll.nics.common.entity.datalayer.Datalayerfolder;
-import edu.mit.ll.nics.common.entity.datalayer.Datasource;
 
-public class DatalayerServiceResponse {
+public class AlertServiceResponse {
 
 	private String message;
 	
-	private Collection<Datalayerfolder> datalayerfolders = new ArrayList<Datalayerfolder>();
-	private Collection<Datalayer> datalayers = new ArrayList<Datalayer>();
-	private Collection<Datasource> datasources = new ArrayList<Datasource>();
-	private Collection<DatalayerOrg> datalayerOrgs = new ArrayList<>();
+	private Collection<?> results = new ArrayList();
 	
-	private int count;
-
 	public String getMessage() {
 		return message;
 	}
@@ -56,49 +47,16 @@ public class DatalayerServiceResponse {
 		this.message = message;
 	}
 
-	public Collection<Datalayerfolder> getDatalayerfolders() {
-		return datalayerfolders;
-	}
-
-	public void setDatalayerfolders(Collection<Datalayerfolder> datalayerfolders) {
-		this.datalayerfolders = datalayerfolders;
+	public Collection<?> getResults() {
+		return results;
 	}
 	
-	public Collection<Datalayer> getDatalayers() {
-		return datalayers;
-	}
-
-	public void setDatalayers(Collection<Datalayer> datalayers) {
-		this.datalayers = datalayers;
+	public void setResults(Collection<?> results) {
+		this.results = results;
 	}
 	
-	public Collection<Datasource> getDatasources() {
-		return datasources;
-	}
-
-	public void setDatasources(Collection<Datasource> datasources) {
-		this.datasources = datasources;
-	}
-
-	public Collection<DatalayerOrg> getDatalayerOrgs() {
-		return datalayerOrgs;
-	}
-
-	public void setDatalayerOrgs(Collection<DatalayerOrg> datalayerOrgs) {
-		this.datalayerOrgs = datalayerOrgs;
-	}
-
+	@Override
 	public String toString() {
-		return "DatalayerServiceResponse [datalayers=" + datalayerfolders + ", "
-				+ "message=" + message + "]";
-	}
-
-	public int getCount() {
-		return count;
-	}
-
-	public void setCount(int count) {
-		this.count = count;
+		return "AlertServiceResponse [message=" + message + ", results=" + results + "]";
 	}	
 }
-

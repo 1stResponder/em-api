@@ -84,7 +84,7 @@ public abstract class GetCapabilitiesExportFile extends DatalayerExportFile{
 		this.userId = userId;
 		this.incidentId = incidentId;
 
-		this.xPath = this.getXPath();
+		//this.xPath = this.getXPath();
 	}
 	
 	/** getResponse
@@ -115,11 +115,16 @@ public abstract class GetCapabilitiesExportFile extends DatalayerExportFile{
 			
 			// write the contents into xml file
 			responseFile = this.createTempFile("GetCapabilities_" + this.exportFormat, ".xml");
+
+
+			// creaye the file as physical doc, its currently not!
+
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();
 			Transformer transformer = transformerFactory.newTransformer();
 			DOMSource source = new DOMSource(this.response);
-			StreamResult result = new StreamResult(responseFile);
+			StreamResult result = new StreamResult(responseFile.getAbsolutePath());
 			transformer.transform(source, result);
+			
 		}catch(Exception e){
 			e.printStackTrace();
 		}

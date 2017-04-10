@@ -58,7 +58,7 @@ import edu.mit.ll.nics.sso.util.SSOUtil;
 import edu.mit.ll.soa.sso.exception.InitializationException;
 
 /**
- * 
+ * Requires iPlanetDirectory server to work.  Currently not working.
  * @AUTHOR sa23148
  *
  */
@@ -217,7 +217,7 @@ public class MDTrackServiceImpl implements MDTrackService {
 		return response;	
 	}
 		
-		
+	// Depends on OpenAM
 	private String verifySender(Cookie cookie, int userId) throws JSONException {
 		JSONObject ret = new JSONObject();
 				

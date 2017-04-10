@@ -179,6 +179,21 @@ public class DatalayerServiceImpl implements DatalayerService {
 	}
 	
 	@Override
+	public Response getTrackingLayers(int workspaceId) {
+		FieldMapResponse response = new FieldMapResponse();
+		try{
+			List<Map<String,Object>> layers = datalayerDao.getTrackingLayers(workspaceId, true);
+			layers.addAll(datalayerDao.getTrackingLayers(workspaceId, false));
+			response.setData(layers);
+		}catch(Exception e){
+			logger.error("Failed to retrieve data layers", e);
+			response.setMessage("Failed to retrieve data layers");
+			return Response.ok(response).status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		return Response.ok(response).status(Status.OK).build();
+	}
+	
+	@Override
 	public Response getDatalayers(String folderId) {
 		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
 		try{
@@ -204,23 +219,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 		
 		return Response.ok(datalayerResponse).status(Status.OK).build();
 	}
-	
-	
-	@Override
-	public Response getTrackingLayers(int workspaceId) {
-		FieldMapResponse response = new FieldMapResponse();
-		try{
-			List<Map<String,Object>> layers = datalayerDao.getTrackingLayers(workspaceId, true);
-			layers.addAll(datalayerDao.getTrackingLayers(workspaceId, false));
-			response.setData(layers);
-		}catch(Exception e){
-			logger.error("Failed to retrieve data layers", e);
-			response.setMessage("Failed to retrieve data layers");
-			return Response.ok(response).status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		return Response.ok(response).status(Status.OK).build();
-	}
-	
+
 	@Override
 	public Response getDatasources(String type) {
 		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
@@ -305,7 +304,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 				//Currently always uploads to Data
 				//Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
 				//Currently always uploads to Upload
-				Folder folder = folderDao.getFolderByName("Upload", workspaceId);
+				Folder folder = folderDao.getFolderByName("Data", workspaceId);
 				int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
 				datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
 				newDatalayerFolder = datalayerDao.getDatalayerfolder(datalayerId, folder.getFolderid());
@@ -435,7 +434,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 		String layerName = batchName.concat(String.valueOf(System.currentTimeMillis()));
 		
 		//write all the uploaded files to the filesystem in a temp directory
-		Path shapesDirectory = Paths.get(fileUploadPath, "/shapefiles");
+		Path shapesDirectory = Paths.get(fileUploadPath, "shapefiles");
 		Path batchDirectory = null;
 		try {
 			Files.createDirectories(shapesDirectory);
@@ -471,8 +470,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 				try {
 					FileUtil.deleteRecursively(batchDirectory);
 				} catch (IOException e) {
-					logger.error("Failed to cleanup shapefile batch directory", e);
-					logger.error("Failed to cleanup shapefile batch directory", e);
+					logger.error("Failed to cleanup shapefile batch directory", e);					
 				}
 			}
 		}
@@ -514,8 +512,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 		datalayer.setDatalayersource(dlsource);
 		
 		String datalayerId = datalayerDao.insertDataLayer(dataSourceId, datalayer);
-		//Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
-		Folder folder = folderDao.getFolderByName("Upload", workspaceId);
+		Folder folder = folderDao.getFolderByName("Data", workspaceId);
 		int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
 		datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
 
@@ -585,7 +582,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 						System.out.println("filename: " + tempfilename);
 
 						if(datalayerDao.insertImageFeature(
-								id, locationString.toString(), id + "/" + path.getFileName().toString()) == 1){
+								id, locationString.toString(), path.getFileName().toString()) == 1){
 							datalayerResponse.setSuccess(true);
 							datalayerResponse.setCount(1);
 						}else{
@@ -638,7 +635,9 @@ public class DatalayerServiceImpl implements DatalayerService {
 				datalayer.setUsersessionid(usersessionId);
 				
 				Datalayersource datalayerSource = new Datalayersource();
-				datalayerSource.setLayername(id);
+
+
+				datalayerSource.setLayername(datalayerDao.getImageFileName(id));
 				datalayer.setDatalayersource(datalayerSource);
 				
 				System.out.println("Post Datalayer : " + workspaceId + "," + datasourceId + "," + datalayer.getDisplayname());
@@ -700,9 +699,6 @@ public class DatalayerServiceImpl implements DatalayerService {
 		int orgId = -1;
 		int collabroomId = -1;
 
-		logger.error("My Username is: " + username);
-		logger.error("My ext is: " + fileExt);
-
 		try{
 
 			user = userDao.getUser(username);
@@ -731,8 +727,6 @@ public class DatalayerServiceImpl implements DatalayerService {
 				Object propValue = attachment.getObject(String.class).toString();
 	
 				if(MediaType.TEXT_PLAIN_TYPE.isCompatible(attachment.getContentType())){
-
-					logger.error("text file");
 
 					if(attachment.getContentDisposition().getParameter("name").toString().equals("usersessionid")){
 						datalayer.setUsersessionid(Integer.valueOf(propValue.toString()));
@@ -764,21 +758,14 @@ public class DatalayerServiceImpl implements DatalayerService {
 					}
 				}
 				else{
-
-					logger.error("not text");
-
 					String attachmentFilename = attachment.getContentDisposition().getParameter("filename").toLowerCase();
 					if (attachmentFilename.endsWith(".kmz")){
-						logger.error("kmz file");
 						filePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.KMZ_UPLOAD_PATH,"/opt/data/nics/upload/kmz");
 					} else if (attachmentFilename.endsWith(".gpx")){
-						logger.error("gpx file");
 						filePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.GPX_UPLOAD_PATH,"/opt/data/nics/upload/gpx");
 					} else if (attachmentFilename.endsWith(".json") || attachmentFilename.endsWith(".geojson")){
-						logger.error("geojson file");
 					 	filePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.JSON_UPLOAD_PATH,"/opt/data/nics/upload/geojson");
 					} else if (attachmentFilename.endsWith(".kml")){
-						logger.error("kml file");
 						filePath = APIConfig.getInstance().getConfiguration().getString(APIConfig.KML_UPLOAD_PATH,"/opt/data/nics/upload/kml");
 					}
 					
@@ -897,7 +884,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 
 					//Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
 					//int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
-					Folder folder = folderDao.getFolderByName("Upload", workspaceId);
+					Folder folder = folderDao.getFolderByName("Data", workspaceId);
 					int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
 					datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
 					newDatalayerFolder = datalayerDao.getDatalayerfolder(datalayerId, folder.getFolderid());
@@ -1255,6 +1242,18 @@ public class DatalayerServiceImpl implements DatalayerService {
 			IOUtils.write("</kml>", output);
 	}
 	
+	public Response logUserIn(int workspaceId){
+		try{
+			String topic = String.format("iweb.NICS.%s.user.userlogin", workspaceId);
+			ObjectMapper mapper = new ObjectMapper();
+			getRabbitProducer().produce(topic, "Okay");
+		} catch (Exception e)
+		{
+		}
+
+		return Response.status(Status.OK).build();
+	}
+
 	private String getMapserverDatasourceId() {
 		if(mapserverURL == null) {
 			return null;
@@ -1310,7 +1309,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 			logger.error("API configuration error " + APIConfig.EXPORT_MAPSERVER_PASSWORD);
 		}
 		
-		return new GeoServer(geoserverUrl.concat(APIConfig.EXPORT_REST_URL), geoserverUsername, geoserverPassword);
+		return new GeoServer(geoserverUrl.concat(SADisplayConstants.EXPORT_REST_URL), geoserverUsername, geoserverPassword);
 	}
 	
 	private String getFileExtension(Attachment attachment) {
@@ -1323,7 +1322,8 @@ public class DatalayerServiceImpl implements DatalayerService {
 		return null;
 	}
 	
-	private void notifyNewChange(Datalayerfolder datalayerfolder, int workspaceId) throws IOException {
+	private void notifyNewChange(Datalayerfolder datalayerfolder, int workspaceId) throws IOException {	
+		// datalayerfolder is current always null
 		if (datalayerfolder != null) {
 			String topic = String.format("iweb.NICS.%s.datalayer.new", workspaceId);
 			ObjectMapper mapper = new ObjectMapper();

@@ -138,20 +138,24 @@ public class LoginServiceImpl implements LoginService {
 	
 	/**
 	 * Performs logout actions for specified user
-	 * 
+	 * For OpenAM
 	 * @param username Username of user to log out
 	 * 
 	 * @return Response
 	 * @see LoginResponse
 	 */	
 	public Response deleteLogin(String username, Cookie cookie) {
-		String token = cookie.getValue();
-		
-		Response response = null;
+		Boolean openAmIdentity = APIConfig.getInstance().getConfiguration().getBoolean("openAm.Identity", false);
+
 		LoginResponse loginResponse = new LoginResponse();
-		
-		if (username != null && !username.isEmpty()) {			
-			try {				
+		Response response = null;
+
+		if(openAmIdentity)
+		{
+		String token = cookie.getValue();
+
+		if (username != null && !username.isEmpty()) {	
+			try {
 				boolean ssoLogoutStatus = false;
 				if(token != null && !token.isEmpty()) {
 					ssoLogoutStatus = doSsoLogout(token);
@@ -171,6 +175,12 @@ public class LoginServiceImpl implements LoginService {
 				loginResponse.setMessage("Unhandled exception attempting to log User out: " + e.getMessage()) ;
 				response = Response.ok(loginResponse).status(Status.NOT_FOUND).build();			
 			}
+		}
+		} else
+		{
+			loginResponse.setMessage("OK");
+			loginResponse.setCount(0);
+			response = Response.ok(loginResponse).status(Status.OK).build();
 		}
 
 		return response;
@@ -320,7 +330,7 @@ public class LoginServiceImpl implements LoginService {
 	
 	
 	/**
-	 * 
+	 * Requires OpenAM
 	 * @param token
 	 * @return
 	 */

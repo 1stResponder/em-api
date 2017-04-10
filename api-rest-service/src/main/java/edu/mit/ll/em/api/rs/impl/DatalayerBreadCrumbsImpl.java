@@ -34,6 +34,7 @@ import com.vividsolutions.jts.geom.Envelope;
 import edu.mit.ll.em.api.rs.DatalayerBreadCrumbs;
 import edu.mit.ll.em.api.util.APIConfig;
 import edu.mit.ll.nics.common.geoserver.api.GeoServer;
+import edu.mit.ll.em.api.util.SADisplayConstants;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -93,7 +94,7 @@ public class DatalayerBreadCrumbsImpl implements DatalayerBreadCrumbs{
 		String mapserverUsername = APIConfig.getInstance().getConfiguration().getString(APIConfig.EXPORT_MAPSERVER_USERNAME);
 		String mapserverPassword = APIConfig.getInstance().getConfiguration().getString(APIConfig.EXPORT_MAPSERVER_PASSWORD);
 		
-		this.geoserver = new GeoServer(mapserverURL + APIConfig.EXPORT_REST_URL, mapserverUsername, mapserverPassword);
+		this.geoserver = new GeoServer(mapserverURL + SADisplayConstants.EXPORT_REST_URL, mapserverUsername, mapserverPassword);
 	}
 	
 	/**

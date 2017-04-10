@@ -30,7 +30,6 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -->
-
 <beans xmlns="http://www.springframework.org/schema/beans"
     xmlns:sec="http://www.springframework.org/schema/security"
     xmlns:p="http://www.springframework.org/schema/p"
@@ -48,12 +47,14 @@
         http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 
     <sec:http entry-point-ref="federationEntryPoint" use-expressions="true">
-    	<sec:intercept-url pattern="/sso-helper/*" access="isAuthenticated()" />
+     <sec:intercept-url pattern="/sso-helper/*" access="isAuthenticated()" />
         <sec:intercept-url pattern="/*/datalayer/*/sources/*/document/**" access="isAuthenticated()" />
+        <sec:intercept-url pattern="/*/datalayer/*/login" access="isAuthenticated()" />
         <sec:intercept-url pattern="/*/datalayer/*/shapefile" access="isAuthenticated()" />
         <sec:intercept-url pattern="/*/collab/export/**" access="isAuthenticated()" />
+        <sec:custom-filter ref="concurrencyFilter" position="CONCURRENT_SESSION_FILTER" />
         <sec:custom-filter ref="federationFilter" after="BASIC_AUTH_FILTER" />
-        <sec:custom-filter ref="nicsClaimToHeaderFilter" before="SERVLET_API_SUPPORT_FILTER" />    
+        <sec:custom-filter ref="nicsClaimToHeaderFilter" before="SERVLET_API_SUPPORT_FILTER" />
         <sec:session-management session-authentication-strategy-ref="sas" />
     </sec:http>
 
@@ -61,13 +62,17 @@
         <sec:authentication-provider ref="federationAuthProvider" />
     </sec:authentication-manager>
 
-	<bean id="nicsClaimToHeaderFilter" class="com.ardentmc.dhs.nics.NICSClaimToHeaderFilter" />
-
     <!-- NOTE: Not loading any properties files, but using this to load system environment variables. -->
 	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer" >
 		<property name="searchSystemEnvironment" value="true" />
-		<property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE" />		    
+		<property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE" />
 	</bean>
+
+    <bean id="concurrencyFilter"
+       class="org.springframework.security.web.session.ConcurrentSessionFilter">
+        <property name="sessionRegistry" ref="sessionRegistry" />
+        <property name="expiredUrl" value="/session-expired.htm" />
+    </bean>
 
     <bean id="fedizConfig" class="org.apache.cxf.fediz.spring.FederationConfigImpl"
         init-method="init" p:configFile="file:${NICS_CONFIG}/fediz_config-em-api.xml" />
@@ -79,12 +84,14 @@
     <bean id="federationFilter"
         class="org.apache.cxf.fediz.spring.web.FederationAuthenticationFilter"
         p:authenticationManager-ref="authManager">
-
+        <property name="sessionAuthenticationStrategy" ref="sas" />
         <property name="authenticationFailureHandler">
             <bean
                 class="org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler" />
         </property>
     </bean>
+
+    <bean id="nicsClaimToHeaderFilter" class="com.ardentmc.dhs.nics.NICSClaimToHeaderFilter" />
 
     <bean id="federationAuthProvider"
         class="org.apache.cxf.fediz.spring.authentication.FederationAuthenticationProvider"
@@ -95,7 +102,19 @@
         </property>
     </bean>
 
-    <bean id="sas"
-        class="org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy" />
+    <bean id="filterMultipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <property name="maxUploadSize" value="51200000" />
+        <property name="maxInMemorySize" value="51200000" />
+    </bean>
+
+    <bean id="sas" class=
+     "org.springframework.security.web.authentication.session.ConcurrentSessionControlStrategy">
+      <constructor-arg name="sessionRegistry" ref="sessionRegistry" />
+      <property name="maximumSessions" value="2" />
+    </bean>
+
+    <bean id="sessionRegistry"
+    class="org.springframework.security.core.session.SessionRegistryImpl" />
+
 </beans>
 

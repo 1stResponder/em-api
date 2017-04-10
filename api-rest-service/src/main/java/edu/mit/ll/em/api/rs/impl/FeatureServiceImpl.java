@@ -105,10 +105,10 @@ public class FeatureServiceImpl implements FeatureService {
 	
 	//The featureId in the constants file is all lower case
 	//Does it need to be for Mapping?
-	private static final String FEATURE_ID = "featureId"; 
+	private static final String JSON_FEATURE_ID = "featureId"; 
 	
 	//The property for the collabroom topic - telling users this feature has been deleted
-	private static final String DELETED_FEATURE_ID = "deletedFeatureId";
+	private static final String JSON_DELETED_FEATURE_ID = "deletedFeatureId";
 	
 	private RabbitPubSubProducer rabbitProducer;
 	
@@ -244,6 +244,14 @@ public class FeatureServiceImpl implements FeatureService {
 		return Response.ok(featureResponse).status(Status.INTERNAL_SERVER_ERROR).build();
 	}
 	
+
+	/**
+	 *  Calls postCollabRoomFeature.  Just another way to pass the username.
+	 */
+	public Response postCollabRoomFeatureUser(int collabRoomId, int geoType , String feature , String requestingUser) {
+			return postCollabRoomFeature(collabRoomId, geoType , feature , requestingUser);
+	}
+
 	/**
 	 * Creates a feature in a collaboration room
 	 * 
@@ -253,7 +261,7 @@ public class FeatureServiceImpl implements FeatureService {
 	 * @return Response A FeatureServiceResponse
 	 */
 	public Response postCollabRoomFeature(int collabRoomId, int geoType , String feature , String requestingUser) {
-		
+
 		if(!collabRoomDao.hasPermissions(userDao.getUserId(requestingUser), collabRoomId)){
 			return getAccessDeniedResponse();
 		}
@@ -429,8 +437,8 @@ public class FeatureServiceImpl implements FeatureService {
 		JSONObject properties = new JSONObject(feature);
 		
 		//Remove the featureId so it doesn't try to persist it again
-		long featureId = properties.getLong(FEATURE_ID);
-		properties.remove(FEATURE_ID);
+		long featureId = properties.getLong(JSON_FEATURE_ID);
+		properties.remove(JSON_FEATURE_ID);
 		
 		//we return documents as part of a feature, but they have their own endpoint
 		properties.remove("documents");
@@ -541,9 +549,9 @@ public class FeatureServiceImpl implements FeatureService {
 	public Response postFeatureDocument(long featureId, int usersessionId, String username, 
 			List<Attachment> attachments, String requestingUser) {
 		
-		if(!username.equalsIgnoreCase(requestingUser)){
+		/*if(!username.equalsIgnoreCase(requestingUser)){
 			return Response.status(Status.BAD_REQUEST).entity(Status.FORBIDDEN.getReasonPhrase()).build();
-		}
+		}*/
 		
 		Feature feature = featureDao.getFeature(featureId);
 		if (feature == null) {
@@ -771,7 +779,7 @@ public class FeatureServiceImpl implements FeatureService {
 	 */
 	private void notifyDeletedFeature(long featureId, String topic) throws IOException, JSONException {
 		JSONObject message = new JSONObject();
-		message.put(DELETED_FEATURE_ID, featureId);
+		message.put(JSON_DELETED_FEATURE_ID, featureId);
 		getRabbitProducer().produce(topic, message.toString());
 	}
 	

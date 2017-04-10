@@ -180,5 +180,10 @@ public interface DatalayerService {
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response deleteCollabroomDataLayer(ArrayList<DatalayerCollabroom> collabRoomDataLayerId );
+
+	@GET
+	@Path("/login")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response logUserIn(@PathParam("workspaceId") int workspaceId);
 }
 

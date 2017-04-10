@@ -185,7 +185,7 @@ public class UserServiceImpl implements UserService {
 		Response response = null;
 		UserResponse userResponse = new UserResponse();
 				
-		List<edu.mit.ll.nics.common.entity.User> users = null;		
+		List<edu.mit.ll.nics.common.entity.User> users = null;
 		try {
 			
 			users = userDao.getActiveUsers(workspaceId);
@@ -317,12 +317,18 @@ public class UserServiceImpl implements UserService {
 				return Response.ok(validate).status(Status.PRECONDITION_FAILED).build();
 			}
 			
-			// Create the Identity for the user, only proceed if it succeeds
-			JSONObject createdIdentity = createIdentityUser(user, registerUser);
-						
-			if(!createdIdentity.optString("status", "").equals(SUCCESS)) {
-				return Response.ok("Failed to create identity. " + createdIdentity.optString("message", "unknown"))
-						.status(Status.PRECONDITION_FAILED).build();
+			Boolean openAmIdentity = APIConfig.getInstance().getConfiguration().getBoolean("openAm.Identity", false);
+
+			// If using OpenAM, add the user there
+			if(openAmIdentity)
+			{
+				// Create the Identity for the user, only proceed if it succeeds
+				JSONObject createdIdentity = createIdentityUser(user, registerUser); // value only used as check
+							
+				if(!createdIdentity.optString("status", "").equals(SUCCESS)) {
+					return Response.ok("Failed to create identity. " + createdIdentity.optString("message", "unknown"))
+							.status(Status.PRECONDITION_FAILED).build();
+				}
 			}
 
 			Collection<Org> orgs = new ArrayList<Org>();
@@ -422,7 +428,7 @@ public class UserServiceImpl implements UserService {
 				userOrgWorkspaces.addAll(createUserOrgWorkspaceEntities(userOrg, false));
 				if(userOrgWorkspacesTeams != null && !userOrgWorkspacesTeams.isEmpty()) {
 					userOrgWorkspaces.addAll(userOrgWorkspacesTeams);
-				}						
+				}
 
 				boolean registerSuccess = userDao.registerUser(user, contactSet, userOrgs, userOrgWorkspaces);
 
@@ -1291,13 +1297,62 @@ public class UserServiceImpl implements UserService {
 		return response;
 	}
 	
+	public Boolean updateOpenAMUserPassword(String username, String currentPassword, String newPassword, UserProfileResponse message)
+	{
+		String propPath = APIConfig.getInstance().getConfiguration().getString("ssoToolsPropertyPath", null); // prop path is used for sso-tools, openam-tools, and amconfig path!
+
+		if(propPath == null)
+		{
+			log.w("UserServiceImpl:postIdentityUserProfile", "Path to sso-tools, openam-tools, and AMConfig properties is null.  Be sure to set the ssoToolsPropertyPath in the config file!  Program will not be able to make SSO calls!");
+			message.setMessage("UserServiceImpl:postIdentityUserProfile: + Path to sso-tools, openam-tools, and AMConfig properties is null.  Be sure to set the ssoToolsPropertyPath in the config file!  Program will not be able to make SSO calls!");
+			return false;
+		}
+		
+		System.setProperty("ssoToolsPropertyPath", propPath);
+		System.setProperty("openamPropertiesPath", propPath);
+		Boolean wasSuccessful = false;
+		SSOUtil ssoUtil = null;
+		
+		try {
+
+			ssoUtil = new SSOUtil();
+
+			String token = ssoUtil.login(username,currentPassword); // token only used as check
+		
+			if(token == null){
+				message.setMessage("Incorrect password");
+				return false;
+			}
+
+			// Updating the profile
+
+			wasSuccessful = ssoUtil.changeUserPassword(username, newPassword);
+
+			if(!(wasSuccessful)) // If the update was not succesful
+			{
+				message.setMessage("Error updating user profile");
+				ssoUtil.logout();
+				return false;
+			}
+
+			ssoUtil.logout();
+			return true;
+
+		} catch(Exception ex)
+		{
+			ex.printStackTrace();
+			log.e("UserServiceImpl:postIdentityUserProfile",ex.getMessage());
+			message.setMessage("Error updating user profile: " + ex.getMessage());
+			return false;
+		}
+		
+	}
+
 	public Response postUserProfile(edu.mit.ll.em.api.rs.User user, String requestingUser, int rUserOrgId){
 		
 		Response response = null;
 		UserProfileResponse profileResponse = new UserProfileResponse();
-		SSOUtil ssoUtil = null;
-		String propPath = APIConfig.getInstance().getConfiguration().getString("ssoToolsPropertyPath", null);
-		
+
 		if(!user.getUserName().equalsIgnoreCase(requestingUser)){
 			
 			//User is not requesting their own profile
@@ -1314,70 +1369,51 @@ public class UserServiceImpl implements UserService {
 		
 		try{
 			
-			Boolean updatedProfile = false;
-			Boolean wrongPW = false;
 			User dbUser = userDao.getAllUserInfoById(user.getUserId());
 			UserOrg userOrg = userOrgDao.getUserOrg(user.getUserOrgId());
+			Boolean openAmIdentity = APIConfig.getInstance().getConfiguration().getBoolean("openAm.Identity", false);
 			
-			if(user.getOldPw().length() > 0  || user.getNewPw().length() > 0 ){	
-				
-				String token = "";
-				
-				if(propPath == null) {
-					log.w("UserServiceImpl", "Got null SSO configuration, won't be able to make SSO calls!");
-					updatedProfile = false;
-				} else {
-					System.setProperty("ssoToolsPropertyPath", propPath);
-					System.setProperty("openamPropertiesPath", propPath);
-					
-					ssoUtil = new SSOUtil();
-					
-					token = ssoUtil.login(user.getUserName(),user.getOldPw());
-					
-					if(!(updatedProfile = (token != null))){
-						wrongPW = true;
-					}
-					
-				}		
-				
-				if(updatedProfile){			
+			// If the users old and new password were specified, we update the password.  Otherwise we are updating something else
+			if(user.getOldPw().length() > 0  || user.getNewPw().length() > 0){
 
-					updatedProfile = ssoUtil.changeUserPassword(user.getUserName(), user.getNewPw());
+					if(openAmIdentity)
+					{
+						Boolean wasSuccessful = updateOpenAMUserPassword(user.getUserName(),user.getOldPw(),user.getNewPw(), profileResponse);
 
-					if(updatedProfile){
-
-						String newPWHash = generateSaltedHash(user.getNewPw(),user.getUserName());
-
-						//String newIDPUserHash = encryptPassword(user.getNewPw(),user.getUserName());
-						
-						updatedProfile =  userDao.updateUserPW(dbUser.getUserId(), newPWHash);
-						//updatedProfile =  userDao.updateUserPW(dbUser.getUserId(), newIDPUserHash);
-						
-						if(updatedProfile){
-							
-							userDao.updateNames(user.getUserId(),user.getFirstName(),user.getLastName());
-							userOrgDao.updateUserOrg(user.getUserOrgId(),user.getJobTitle(),user.getRank(),user.getJobDesc(), user.getSysRoleId());
-						
-							dbUser = userDao.getAllUserInfoById(user.getUserId());
-							userOrg = userOrgDao.getUserOrg(user.getUserOrgId());
-							
+						if(!wasSuccessful)
+						{
+							response = Response.ok(profileResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+							return response;
 						}
-						else{
-							
-							ssoUtil.changeUserPassword(user.getUserName(), user.getOldPw());
+
+					}
+
+					// Adding user to the DB
+					String hashedPassword = generateSaltedHash(user.getNewPw(),user.getUserName());
+					// TODO: once OpenAm fixed.  Pick the appropiate method depending on using openAM vs IDP.
+					Boolean wasSuccessful = userDao.updateUserPW(dbUser.getUserId(), hashedPassword, user.getNewPw());
+
+					if(wasSuccessful)
+					{
+						userDao.updateNames(user.getUserId(),user.getFirstName(),user.getLastName());
+						userOrgDao.updateUserOrg(user.getUserOrgId(),user.getJobTitle(),user.getRank(),user.getJobDesc(), user.getSysRoleId());
+						
+						dbUser = userDao.getAllUserInfoById(user.getUserId());
+						userOrg = userOrgDao.getUserOrg(user.getUserOrgId());
+					} else
+					{
+						// rollback changes in OpenAm, if it is being used.
+						if(openAmIdentity)
+						{
+							updateOpenAMUserPassword(user.getUserName(),user.getOldPw(),user.getOldPw(), profileResponse);
+							profileResponse.setMessage("Error updating user profile");
+							response = Response.ok(profileResponse).status(Status.INTERNAL_SERVER_ERROR).build();
+							return response;
 						}
 					}
-				}
-				
-				if(ssoUtil != null){
-					ssoUtil.logout();
-					
-				}
 			}
 			else{
-				
-				updatedProfile = true;
-				
+
 				userDao.updateNames(user.getUserId(),user.getFirstName(),user.getLastName());
 				userOrgDao.updateUserOrg(user.getUserOrgId(),user.getJobTitle(),user.getRank(),user.getJobDesc(), user.getSysRoleId());
 				
@@ -1385,29 +1421,17 @@ public class UserServiceImpl implements UserService {
 				userOrg = userOrgDao.getUserOrg(user.getUserOrgId());
 			}
 			
-			if(updatedProfile){
+			profileResponse.setUserOrgId(userOrg.getUserorgid());
+			profileResponse.setOrgId(userOrg.getOrgid());
+			profileResponse.setUserId(dbUser.getUserId());
+			profileResponse.setUserFirstname(dbUser.getFirstname());
+			profileResponse.setUserLastname(dbUser.getLastname());
+			profileResponse.setRank(userOrg.getRank());
+			profileResponse.setDescription(userOrg.getDescription());
+			profileResponse.setJobTitle(userOrg.getJobTitle());
+			profileResponse.setMessage("ok");
 
-				profileResponse.setUserOrgId(userOrg.getUserorgid());
-				profileResponse.setOrgId(userOrg.getOrgid());
-				profileResponse.setUserId(dbUser.getUserId());
-				profileResponse.setUserFirstname(dbUser.getFirstname());
-				profileResponse.setUserLastname(dbUser.getLastname());
-				profileResponse.setRank(userOrg.getRank());
-				profileResponse.setDescription(userOrg.getDescription());
-				profileResponse.setJobTitle(userOrg.getJobTitle());
-				profileResponse.setMessage("ok");
-
-				response = Response.ok(profileResponse).status(Status.OK).build();
-			}
-			else{
-				if(wrongPW){
-					profileResponse.setMessage("Incorrect password");
-				}
-				else{
-					profileResponse.setMessage("Error updating user profile");
-				}
-				response = Response.ok(profileResponse).status(Status.INTERNAL_SERVER_ERROR).build();
-			}
+			response = Response.ok(profileResponse).status(Status.OK).build();
 			
 		}catch(DataAccessException ex){
 			ex.printStackTrace();
@@ -1492,13 +1516,12 @@ public class UserServiceImpl implements UserService {
 		user.setUsername(rUser.getEmail());
 		user.setUserId(userid);
 		user.setPasswordHash(generateSaltedHash(rUser.getPassword(), rUser.getEmail()));
-		user.setPasswordIDP(encryptPassword(rUser.getPassword(),rUser.getEmail()));
 		user.setEnabled(false);
 		user.setActive(true);
 		user.setLastupdated(Calendar.getInstance().getTime());
 		user.setCreated(Calendar.getInstance().getTime());
 		user.setPasswordchanged(Calendar.getInstance().getTime());
-		
+
 		return user;
 	}
 	
@@ -1537,66 +1560,6 @@ public class UserServiceImpl implements UserService {
 			throw new RuntimeException(e); 
 		}
 	}
-
-	public static String encryptPassword(String password, String salt)
-  {
-    	try {
-			MessageDigest md = MessageDigest.getInstance("SHA-1");
-
-			if (salt != null)
-			{
-				md.update(salt.getBytes("UTF-8"));
-				byte[] encryptedSalt = md.digest();
-
-				md.reset();
-				md.update(password.getBytes("UTF-8"));
-				md.update(encryptedSalt);
-			}
-			else
-			{
-				md.update(password.getBytes("UTF-8"));
-			}
-
-			byte[] raw = md.digest();
-          //	byte[] doubleHashed = encryptPassword(raw, salt);
-          
-          	//return raw;
-          	return Base64.encodeBase64String(raw);
-		}
-		catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-       
-  }
-  
-  public static byte[] encryptPassword(byte[] password, String salt)
-  {
-    	try {
-			MessageDigest md = MessageDigest.getInstance("SHA-1");
-
-			if (salt != null)
-			{
-				md.update(salt.getBytes("UTF-8"));
-				byte[] encryptedSalt = md.digest();
-              
-				md.reset();
-				md.update(password);
-				md.update(encryptedSalt);
-			}
-			else
-			{
-				md.update(password);
-			}
-
-			byte[] raw = md.digest();
-			//return Base64.encodeBase64String(raw);
-          
-          	return raw;
-		}
-		catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-  }
 	
 	
 	/**

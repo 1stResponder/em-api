@@ -107,7 +107,6 @@ public class APIConfig {
 	public static final String EXPORT_MAPSERVER_PASSWORD = "em.api.service.export.mapserverPassword";
 	public static final String EXPORT_COLLABROOM_STORE = "em.api.service.export.collabroomStore";
 	public static final String EXPORT_WORKSPACE_NAME = "em.api.service.export.workspaceName";
-	public static final String EXPORT_REST_URL = "/rest";
 	public static final String EXPORT_WEBSERVER_URL = "em.api.service.export.webserverURL";
 	
 	public static final String IMAGE_LAYER_MAPSERVER_URL = "em.api.service.image.layer.mapserver.url";		
@@ -131,7 +130,7 @@ public class APIConfig {
 	// Broadcast Alerts	
 	public static final String BROADCASTALERTS_BASETOPIC = "em.api.broadcastalerts.basetopic";
 	public static final String BROADCASTALERTS_BASETOPIC_DEFAULT = "iweb.NICS.broadcastalerts.user.";
-	
+
 	private Configuration config;
 	
 	// Lazy-initialization Holder class idiom.

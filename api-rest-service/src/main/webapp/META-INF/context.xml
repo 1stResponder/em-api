@@ -29,7 +29,7 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -->
-<Context>
+<Context allowCasualMultipartParsing="true">
 <!--<Context reloadable="true" cachingAllowed="false" antiResourceLocking="true">-->
 
 <!-- Default set of monitored resources 

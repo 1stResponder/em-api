@@ -46,7 +46,6 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<amqclient-version>2.7.1</amqclient-version>
 		<cxf.version>3.0.3</cxf.version>
-		<spring.version>4.1.4.RELEASE</spring.version>
 		<junit.version>4.8.2</junit.version>
 		<!-- <camel.version>2.10.1</camel.version> -->
 		<jackson.version>1.9.7</jackson.version>
@@ -64,7 +63,8 @@
 		<license.plugin.version>1.9.0</license.plugin.version>
     	<jersey.version>2.17</jersey.version>
     	<drewnoakes.version>2.9.1</drewnoakes.version>
-		<fediz-spring.version>1.2.2</fediz-spring.version>
+		<fediz-spring.version>1.2.3</fediz-spring.version>
+		<bouncycastle.version>1.55</bouncycastle.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -111,25 +111,39 @@
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
-                                <groupId>edu.mit.ll.nics.common</groupId>
-                                <artifactId>xml-email</artifactId>
-                                <version>${project.version}</version>
-                        </dependency>
+                <groupId>edu.mit.ll.nics.common</groupId>
+                <artifactId>xml-email</artifactId>
+                <version>${project.version}</version>
+        	</dependency>
 			<dependency>
 				<groupId>org.postgresql</groupId>
 				<artifactId>postgresql</artifactId>
 				<version>${postgresql.version}</version>
 			</dependency>
+
+<dependency>
+    <groupId>org.springframework.security</groupId>
+    <artifactId>spring-security-core</artifactId>
+    <version>3.1.7.RELEASE</version>
+</dependency>
+
 			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-web</artifactId>
-				<version>${spring.version}</version>
-			</dependency>
+		        <groupId>org.springframework.session</groupId>
+		        <artifactId>spring-session</artifactId>
+		        <version>1.2.2.RELEASE</version>
+		    </dependency>
+
 			<dependency>
 				<groupId>org.owasp.esapi</groupId>
 				<artifactId>esapi</artifactId>
 				<version>${esapi.version}</version>
 			</dependency>
+
+			<dependency>
+      			<groupId>org.bouncycastle</groupId>
+      			<artifactId>bcprov-jdk16</artifactId>
+     		 	<version>1.45</version>
+  			</dependency>
 			<!-- <dependency> <groupId>org.apache.camel</groupId> <artifactId>camel-spring</artifactId>
 				<version>${camel.version}</version> </dependency> <dependency> <groupId>org.apache.camel</groupId>
 				<artifactId>camel-jackson</artifactId> <version>${camel.version}</version>

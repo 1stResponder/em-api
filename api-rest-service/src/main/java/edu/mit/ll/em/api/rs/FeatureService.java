@@ -68,6 +68,16 @@ public interface FeatureService {
 			@DefaultValue("3857") @QueryParam("geoType") int geoType,
 			String feature,
 			@HeaderParam("CUSTOM-uid") String username);
+
+	@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	@Path(value = "/collabroom/{collabRoomId}/username/{userName}")
+	public Response postCollabRoomFeatureUser(
+			@PathParam("collabRoomId") int collabRoomId,
+			@DefaultValue("3857") @QueryParam("geoType") int geoType,
+			String feature,
+			@PathParam("userName") String username);
 	
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)

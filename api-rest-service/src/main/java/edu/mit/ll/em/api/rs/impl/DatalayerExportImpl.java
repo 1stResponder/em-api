@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.vividsolutions.jts.geom.Envelope;
+import org.apache.commons.configuration.Configuration;
 
 import edu.mit.ll.em.api.rs.DatalayerExport;
 import edu.mit.ll.em.api.rs.export.DatalayerExportFile;
@@ -62,36 +63,37 @@ import org.springframework.dao.DataAccessException;
 
 public class DatalayerExportImpl implements DatalayerExport{
 	
-	private static final String ALL_FEATURES = "all";
+	/*private static final String ALL_FEATURES = "all";
 	private static final String POINT = "point";
 	private static final String LINE = "line";
 	private static final String POLYGON = "polygon";
 	private static final String SHAPE = "shape";
-	private static final String GEOMETRY_NAME = "geometry";
+	private static final String GEOMETRY_ATT_NAME = "geometry";
 
-	private static final String ERROR_FILENAME = "Export_Error";
-	private static final String TYPE_ERROR = "There was an error retrieving an export file for format ";
-	private static final String PERMISSION_ERROR = "You do not have permissions to download this file.";
+	private static final String EXPORT_ERROR_FILENAME = "Export_Error";
+	private static final String EXPORT_TYPE_ERROR = "There was an error retrieving an export file for format ";
+	private static final String EXPORT_PERMISSION_ERROR = "You do not have permissions to download this file.";
 	private static final String EXPORT_ERROR = "There was an error processing your request.";
-	private static final String INFO_ERROR = "There was an error gathering information for ";	
-	private static final String INVALID_TYPE_ERROR = "An invalid geometry type was provided.";
+	private static final String EXPORT_INFO_ERROR = "There was an error gathering information for ";
+	private static final String EXPORT_INVALID_TYPE_ERROR = "An invalid geometry type was provided.";
 		
+	public static int EXPORT_SRID = 3857;
+	public static String EXPORT_SRS_STRING = "EPSG:3857";*/
+
 	private GeoServer geoserver;
 	private String workspaceName;
 	private String dataStoreName;
 	private String mapserverURL;
+	private Configuration config;
+
 	
 	public Envelope maxExtent = new Envelope(-14084454.868, -6624200.909, 1593579.354, 6338790.069);
 	public Envelope maxExtentLatLon = new Envelope(-126.523, -59.506, 14.169, 49.375);
 	
-	public static int SRID = 3857;
-	public static String SRS_STRING = "EPSG:3857";
-	
 	private static final IncidentDAOImpl incidentDao = new IncidentDAOImpl();
 	private static final CollabRoomDAOImpl collabDao = new CollabRoomDAOImpl();
 	private static final UserDAOImpl userDao = new UserDAOImpl();
-	
-	
+
 	public DatalayerExportImpl(){
 		this.loadConfig();
 	}
@@ -112,11 +114,11 @@ public class DatalayerExportImpl implements DatalayerExport{
 		
 		if(userDao.getUserId(requestingUser) != userId){
 			//Export Error
-			response = this.getErrorReport(PERMISSION_ERROR).getTextFile();
+			response = this.getErrorReport(SADisplayConstants.EXPORT_PERMISSION_ERROR).getTextFile();
 		}
 		else{
 			if(!this.isValidType(type)){
-				response = this.getErrorReport(INVALID_TYPE_ERROR).getTextFile();
+				response = this.getErrorReport(SADisplayConstants.EXPORT_INVALID_TYPE_ERROR).getTextFile();
 			}else if(this.hasPermissions(userId, incidentId, collabRoomId)){
 				//Check to see if layer exists
 				String layername = this.buildLayername(collabRoomId, type);
@@ -129,12 +131,12 @@ public class DatalayerExportImpl implements DatalayerExport{
 				response = this.getExportFile(layername, collabRoomId, incidentId, type, format);
 			}else{
 				//Export Error
-				response = this.getErrorReport(PERMISSION_ERROR).getTextFile();
+				response = this.getErrorReport(SADisplayConstants.EXPORT_PERMISSION_ERROR).getTextFile();
 			}
 			
 			if(response == null){
 				//Export Error
-				response = this.getErrorReport(EXPORT_ERROR).getTextFile();
+				response = this.getErrorReport(SADisplayConstants.EXPORT_ERROR).getTextFile();
 			}
 		}
 		
@@ -156,7 +158,7 @@ public class DatalayerExportImpl implements DatalayerExport{
 		
 		if(response == null){
 			//Export Error
-			response = this.getErrorReport(EXPORT_ERROR).getTextFile();
+			response = this.getErrorReport(SADisplayConstants.EXPORT_ERROR).getTextFile();
 		}
 		
 		return Response.ok(response, MediaType.APPLICATION_OCTET_STREAM)
@@ -186,25 +188,25 @@ public class DatalayerExportImpl implements DatalayerExport{
 		
 		if(datalayerInfo != null){
 			//KML Static File
-			if(format.equals(KMLExportFile.STATIC)){
-				exportFile = new KMLExportFile(layername, KMLExportFile.STATIC, this.mapserverURL, this.workspaceName);
+			if(format.equals(SADisplayConstants.STATIC)){
+				exportFile = new KMLExportFile(layername, SADisplayConstants.STATIC, this.mapserverURL, this.workspaceName);
 			}
 			//KML Dynamic File - don't allow dynamic exports for now
-			/*else if(format.equals(KMLExportFile.DYNAMIC)){
-				exportFile = new KMLExportFile(layername, KMLExportFile.DYNAMIC, this.mapserverURL, this.workspaceName);
+			/*else if(format.equals(SADisplayConstants.DYNAMIC)){
+				exportFile = new KMLExportFile(layername, SADisplayConstants.DYNAMIC, this.mapserverURL, this.workspaceName);
 			}*/
 			//Shape File
-			else if(format.equals(SHAPE)){
+			else if(format.equals(SADisplayConstants.SHAPE)){
 				exportFile = new ShapeExportFile(layername, this.mapserverURL);
 			}
 			if(exportFile == null){
 				//Export Error
-				exportFile = this.getErrorReport(TYPE_ERROR + format);
+				exportFile = this.getErrorReport(SADisplayConstants.EXPORT_TYPE_ERROR + format);
 			}else{
 				exportFile.writeToTextFile(datalayerInfo);
 			}
 		}else{
-			StringBuffer errorStr = new StringBuffer(INFO_ERROR);
+			StringBuffer errorStr = new StringBuffer(SADisplayConstants.EXPORT_INFO_ERROR);
 			errorStr.append("incident id");
 			errorStr.append(incidentId);
 			errorStr.append(" and collabrroom id ");
@@ -227,17 +229,17 @@ public class DatalayerExportImpl implements DatalayerExport{
 		DatalayerExportFile exportFile = null;
 		
 		//WMS
-		if(exportFormat.equals(GetCapabilitiesExportFile.WMS)){
+		if(exportFormat.equals(SADisplayConstants.WMS)){
 			exportFile = new WMSGetCapabilitiesExport(exportFormat, this.mapserverURL, this.workspaceName, userId, incidentId);
 		}
 		//KML Dynamic File
-		else if(exportFormat.equals(GetCapabilitiesExportFile.WFS)){
+		else if(exportFormat.equals(SADisplayConstants.WFS)){
 			exportFile = new WFSGetCapabilitiesExport(exportFormat, this.mapserverURL, this.workspaceName, userId, incidentId);
 		}
 		
 		if(exportFile == null){
 			//Export Error
-			exportFile = this.getErrorReport(TYPE_ERROR + exportFormat);
+			exportFile = this.getErrorReport(SADisplayConstants.EXPORT_TYPE_ERROR + exportFormat);
 		}
 		
 		return exportFile.getResponse();
@@ -249,7 +251,7 @@ public class DatalayerExportImpl implements DatalayerExport{
 	 * @return Response - text file
 	 */
 	private DatalayerExportFile getErrorReport(String message){
-		DatalayerExportFile exportFile = new DatalayerExportFile(ERROR_FILENAME);
+		DatalayerExportFile exportFile = new DatalayerExportFile(SADisplayConstants.EXPORT_ERROR_FILENAME);
 		exportFile.writeToTextFile(message);
 		return exportFile;
 	}
@@ -258,16 +260,19 @@ public class DatalayerExportImpl implements DatalayerExport{
 	 * loadConfig - load configuration from the papi-svc.properties file
 	 */
 	private void loadConfig(){
-		this.mapserverURL = APIConfig.getInstance().getConfiguration().getString(APIConfig.EXPORT_MAPSERVER_URL);
+
+		config = APIConfig.getInstance().getConfiguration();
+
+		this.mapserverURL = config.getString(APIConfig.EXPORT_MAPSERVER_URL);
+		this.dataStoreName = config.getString(APIConfig.EXPORT_COLLABROOM_STORE);
+		this.workspaceName = config.getString(APIConfig.EXPORT_WORKSPACE_NAME);
 		
-		this.dataStoreName = APIConfig.getInstance().getConfiguration().getString(APIConfig.EXPORT_COLLABROOM_STORE);
+		String mapserverUsername = config.getString(APIConfig.EXPORT_MAPSERVER_USERNAME);
+		String mapserverPassword = config.getString(APIConfig.EXPORT_MAPSERVER_PASSWORD);
 		
-		this.workspaceName = APIConfig.getInstance().getConfiguration().getString(APIConfig.EXPORT_WORKSPACE_NAME);
-		
-		String mapserverUsername = APIConfig.getInstance().getConfiguration().getString(APIConfig.EXPORT_MAPSERVER_USERNAME);
-		String mapserverPassword = APIConfig.getInstance().getConfiguration().getString(APIConfig.EXPORT_MAPSERVER_PASSWORD);
-		
-		this.geoserver = new GeoServer(mapserverURL + APIConfig.EXPORT_REST_URL, mapserverUsername, mapserverPassword);
+
+
+		this.geoserver = new GeoServer(mapserverURL + SADisplayConstants.EXPORT_REST_URL, mapserverUsername, mapserverPassword);
 	}
 	
 	/**
@@ -281,15 +286,19 @@ public class DatalayerExportImpl implements DatalayerExport{
 		String title = "";
 		String sql = this.getSql(collabroomId, type);
 		
-		if (this.geoserver.addFeatureTypeSQL(this.workspaceName, this.dataStoreName, layername, SRS_STRING, sql, GEOMETRY_NAME, "Geometry", SRID)) {
-			this.geoserver.updateLayerStyle(layername, this.workspaceName, "collabRoomStyle");
+		if (this.geoserver.addFeatureTypeSQL(this.workspaceName, this.dataStoreName, layername, SADisplayConstants.EXPORT_SRS_STRING, sql, SADisplayConstants.GEOMETRY_ATT_NAME, SADisplayConstants.GEOMETRY_TYPE, SADisplayConstants.EXPORT_SRID)) {
+
+
+			this.geoserver.updateLayerStyle(layername, this.workspaceName, SADisplayConstants.EXPORT_STYLE);
+
+
 			this.geoserver.updateFeatureTypeTitle(layername, this.workspaceName, this.dataStoreName, title);
-			this.geoserver.updateFeatureTypeBounds(this.workspaceName, this.dataStoreName, layername, maxExtent, maxExtentLatLon, SRS_STRING);
+			this.geoserver.updateFeatureTypeBounds(this.workspaceName, this.dataStoreName, layername, maxExtent, maxExtentLatLon, SADisplayConstants.EXPORT_SRS_STRING);
 			this.geoserver.updateFeatureTypeEnabled(this.workspaceName, this.dataStoreName, layername, true);
 			this.geoserver.updateLayerEnabled(layername, this.workspaceName, true);
 			return true;
 		} else {
-			return false;
+		return false;
 		}
 	}
 	
@@ -302,7 +311,7 @@ public class DatalayerExportImpl implements DatalayerExport{
 	private String buildLayername(int collabroomId, String type){
 		StringBuffer layername = new StringBuffer("R");
 		layername.append((new Integer(collabroomId)).toString());
-		if(!type.toLowerCase().equals(ALL_FEATURES)){
+		if(!type.toLowerCase().equals(SADisplayConstants.ALL_FEATURES)){
 			layername.append("_");
 			layername.append(type.toLowerCase());
 		}
@@ -317,11 +326,11 @@ public class DatalayerExportImpl implements DatalayerExport{
 	 */
 	private String getSql(int collabroomId, String type){
 		String sql = "SELECT f.* from Feature f, CollabroomFeature cf WHERE cf.featureid=f.featureid and cf.collabroomid=" + collabroomId;
-		if(type.toLowerCase().equals(POINT)){
+		if(type.toLowerCase().equals(SADisplayConstants.POINT)){
 			sql += " and f.type='point'";
-		}else if(type.toLowerCase().equals(POLYGON)){
+		}else if(type.toLowerCase().equals(SADisplayConstants.POLYGON)){
 			sql += " and f.type in('polygon','hexagon','circle','box', 'triangle')";
-		}else if(type.toLowerCase().equals(LINE)){
+		}else if(type.toLowerCase().equals(SADisplayConstants.LINE)){
 			sql += " and f.type='sketch'";
 		}
 		return sql;
@@ -336,8 +345,7 @@ public class DatalayerExportImpl implements DatalayerExport{
 	 */
 	private boolean hasPermissions(long userId, int incidentId, int collabRoomId){
 		try{
-			//List<CollabRoom> rooms = CollabDAO.getInstance().getAccessibleCollabRooms(userId, incidentId);
-			String incidentMap = APIConfig.getInstance().getConfiguration().getString(
+			String incidentMap = config.getString(
 					APIConfig.INCIDENT_MAP, SADisplayConstants.INCIDENT_MAP);
 			
 			//Does not allow users who are not read/write or admins to export the incident map
@@ -364,7 +372,7 @@ public class DatalayerExportImpl implements DatalayerExport{
 	 * @param layername - the layername (R + collabroomid + type)
 	 * @return boolean
 	 */
-	private List<String> getDatalayerInfo(int incidentId, int collabRoomId, String layername) 
+	private List<String> getDatalayerInfo(int incidentId, int collabRoomId, String layername)
 			throws DataAccessException, Exception {
 		List<String> info = new ArrayList<String>();
 				
@@ -400,10 +408,10 @@ public class DatalayerExportImpl implements DatalayerExport{
 	}
 	
 	private boolean isValidType(String type){
-		if(type.toLowerCase().equals(POLYGON) ||
-				type.toLowerCase().equals(LINE) ||
-				type.toLowerCase().equals(POINT) ||
-				type.toLowerCase().equals(ALL_FEATURES)){
+		if(type.toLowerCase().equals(SADisplayConstants.POLYGON) ||
+				type.toLowerCase().equals(SADisplayConstants.LINE) ||
+				type.toLowerCase().equals(SADisplayConstants.POINT) ||
+				type.toLowerCase().equals(SADisplayConstants.ALL_FEATURES)){
 			return true;
 		}
 		return false;

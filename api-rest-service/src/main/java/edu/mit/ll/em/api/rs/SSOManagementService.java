@@ -52,6 +52,8 @@ public interface SSOManagementService {
 	/**
 	 * Get listing of users belonging to realm
 	 * 
+	 * For use with OpenAM.
+	 *
 	 * TODO:SSO Should probably paginate/limit results? Also, this shouldn't be allowed
 	 * 		to just anyone who hits the service with an authenticated token. It should probably
 	 * 		require that they have admin privs?

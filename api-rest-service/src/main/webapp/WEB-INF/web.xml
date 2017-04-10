@@ -30,9 +30,9 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -->
-<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
+<web-app version="3.0" xmlns="http://java.sun.com/xml/ns/javaee"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
 
 	<context-param>
 		<param-name>webAppRootKey</param-name>
@@ -53,25 +53,38 @@
 	<filter>
 		<filter-name>springSecurityFilterChain</filter-name>
 		<filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+		<async-supported>true</async-supported>
 	</filter>
 	-->
 	<!-- Optional: Cache the security token in Thread Local Storage -->
 	<!--
 	<filter>
-		<filter-name>FederationFilter</filter-name>
-		<filter-class>org.apache.cxf.fediz.core.servlet.FederationFilter</filter-class>
+	  <filter-name>CorsFilter</filter-name>
+	  <filter-class>org.apache.catalina.filters.CorsFilter</filter-class>
 	</filter>
-	
+
+	<filter-mapping>
+	  <filter-name>CorsFilter</filter-name>
+	  <url-pattern>/*</url-pattern>
+	</filter-mapping>
+
 	<filter-mapping>
 		<filter-name>springSecurityFilterChain</filter-name>
 		<url-pattern>/*</url-pattern>
 	</filter-mapping>
 
+	<!-- Optional: Cache the security token in Thread Local Storage -->
+
+	<filter>
+		<filter-name>FederationFilter</filter-name>
+		<filter-class>org.apache.cxf.fediz.core.servlet.FederationFilter</filter-class>
+	</filter>
+
 	<filter-mapping>
 		<filter-name>FederationFilter</filter-name>
 		<url-pattern>/*</url-pattern>
 	</filter-mapping>
-			-->
+
 	<listener>
 		<listener-class>org.springframework.web.util.Log4jConfigListener</listener-class>
 	</listener>
@@ -83,6 +96,12 @@
 	<listener>
 		<listener-class>org.springframework.web.context.request.RequestContextListener</listener-class>
 	</listener>
+
+	<listener>
+		<listener-class>
+		  org.springframework.security.web.session.HttpSessionEventPublisher
+		</listener-class>
+	</listener> 
 
 	<servlet>
 		<servlet-name>RestServiceV1</servlet-name>
@@ -96,6 +115,7 @@
 			<param-value>org.apache.cxf.jaxrs.provider.SONProvider</param-value>
 		</init-param>
 		<load-on-startup>1</load-on-startup>
+		<async-supported>true</async-supported>
 	</servlet>
 
 	<servlet-mapping>

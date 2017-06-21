@@ -379,20 +379,24 @@ public class FeatureServiceImpl implements FeatureService {
 		
 		Response response;
 		FeatureServiceResponse featureResponse = new FeatureServiceResponse();
-		try{
+
+		try
+		{
 			featureDao.setCollabroomFeatureDeleted(featureId, true);
 			
 			this.updatePostResponse(featureResponse, featureId);
 			
 			response = Response.ok(featureResponse).status(Status.OK).build();
-		}catch(Exception e){
+		}
+		catch(Exception e)
+		{
 			featureResponse.setMessage("Unhandled exception while deleting Collab Room Feature: " + e.getMessage());
 			response = Response.ok(featureResponse).status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		
 		if(Status.OK.getStatusCode() == response.getStatus()){
 			try {
-				notifyDeletedFeature(featureId, 
+				notifyDeletedFeature(featureId,
 						String.format("iweb.NICS.collabroom.%s.deletefeature", collabRoomId));
 			} catch (Exception e) {
 				String errorMessage = "Failed to publish a Delete CollabRoom Feature message event";

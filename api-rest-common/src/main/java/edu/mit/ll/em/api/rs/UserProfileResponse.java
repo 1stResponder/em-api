@@ -70,6 +70,8 @@ public class UserProfileResponse {
 	private boolean isSuperUser;
 	
 	private boolean isAdminUser;
+
+	private boolean isGisUser;
 	
 	public String getMessage() {
 		return message;
@@ -89,6 +91,7 @@ public class UserProfileResponse {
 				", message=" + message + 
 				", isSuperUser=" + isSuperUser + 
 				", isAdminUser=" + isAdminUser + 
+				", isGisUser=" + isGisUser +
 		"]";
 	}	
 	
@@ -102,6 +105,17 @@ public class UserProfileResponse {
 	
 	public void setIsAdminUser(boolean isAdminUser){
 		this.isAdminUser = isAdminUser;
+	}
+
+	// isGisUser
+
+	public boolean getIsGisUser()
+	{
+		return isGisUser;
+	}
+
+	public void setIsGisUser(boolean isGisUser){
+		this.isGisUser = isGisUser;
 	}
 	
 	public boolean getIsAdminUser(){

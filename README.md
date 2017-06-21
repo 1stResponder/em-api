@@ -16,6 +16,8 @@ The configuration file can be found here em-api/api-rest-service/src/main/config
 
 The database information must be set in the em-api/api-rest-service/src/main/webapp/META-INF/context.xml file before compiling and deploying the application
 
+The default expired URL for Spring Security is set to be /spring_logout
+
 ## Documentation
 
 Further documentation is available at nics-common/docs

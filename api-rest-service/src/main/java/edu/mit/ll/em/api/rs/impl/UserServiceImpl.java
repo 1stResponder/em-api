@@ -215,15 +215,38 @@ public class UserServiceImpl implements UserService {
 	public Response isAdmin(int userOrgId){
 		Response response = null;
 		UserResponse userResponse = new UserResponse();
-		int systemRoleId = userOrgDao.getSystemRoleId(userOrgId);
-		if(systemRoleId == SADisplayConstants.ADMIN_ROLE_ID ||
-				systemRoleId == SADisplayConstants.SUPER_ROLE_ID){
+
+		UserOrg u = userOrgDao.getUserOrg(userOrgId);
+		
+		if(u.isElevated())
+		{
 			userResponse.setCount(1);
 			userResponse.setMessage(Status.OK.getReasonPhrase());
 			response = Response.ok(userResponse).status(Status.OK).build();
-		}else{
+		}
+		else
+		{
 			return Response.status(Status.BAD_REQUEST).entity(Status.FORBIDDEN.getReasonPhrase()).build();
 		}
+		return response;
+	}
+
+	public Response getUserStatus(int workspaceId, String username){
+		Response response = null;
+		UserResponse userResponse = new UserResponse();
+		User u = userDao.getUser(username);
+
+		if(u != null)
+		{
+			userResponse.setCount(1);
+			userResponse.setMessage(Status.OK.getReasonPhrase());
+			response = Response.ok(userResponse).status(Status.OK).build();
+		} else
+		{
+			userResponse.setMessage(Status.FORBIDDEN.getReasonPhrase());
+			response = Response.ok(userResponse).status(Status.OK).build();
+		}
+
 		return response;
 	}
 	
@@ -231,6 +254,9 @@ public class UserServiceImpl implements UserService {
 		Response response = null;
 		UserResponse userResponse = new UserResponse();
 		int userId = userDao.isEnabled(username);
+
+
+
 		if(userId != -1 && userOrgDao.hasEnabledOrgs(userId, workspaceId) > 0){
 			userResponse.setCount(1);
 			userResponse.setMessage(Status.OK.getReasonPhrase());
@@ -1001,18 +1027,20 @@ public class UserServiceImpl implements UserService {
 			response = Response.ok(userResponse).status(Status.NOT_FOUND).build();	
 		}
 
-		return response;	
+		return response;
+	}
+
+	public Response setUserActive(int userOrgWorkspaceId, int userId, String requestingUser, boolean active){
+			return setUserActive(userOrgWorkspaceId,userId,active,requestingUser);
 	}
 
 	public Response setUserActive(int userOrgWorkspaceId, int userId, boolean active, String requestingUser){
 		Response response = null;
 		UserResponse userResponse = new UserResponse();
+		User u = userDao.getUser(requestingUser);
 
-		int systemRoleId = userOrgDao.getSystemRoleId(requestingUser, userOrgWorkspaceId);
-
-		if ((systemRoleId == SADisplayConstants.ADMIN_ROLE_ID || systemRoleId == SADisplayConstants.SUPER_ROLE_ID) ||
-				userOrgDao.isUserRole(requestingUser, SADisplayConstants.SUPER_ROLE_ID)) {
-
+		if (u.isElevated())
+		{
 			userDao.setUserActive(userId, active);
 
 			User responseUser = userDao.getUserById(userId);
@@ -1020,8 +1048,19 @@ public class UserServiceImpl implements UserService {
 
 			userResponse.setMessage(Status.OK.getReasonPhrase());
 			response = Response.ok(userResponse).status(Status.OK).build();
-		} else {
+		}
+		else
+		{
+
 			return Response.status(Status.BAD_REQUEST).entity(Status.FORBIDDEN.getReasonPhrase()).build();
+		}
+
+		try
+		{
+			notifyUserChange();
+		} catch (Exception e)
+		{
+			//
 		}
 
 		return response;
@@ -1119,14 +1158,11 @@ public class UserServiceImpl implements UserService {
 			int workspaceId, boolean enabled, String requestingUser){
 		Response response = null;
 		UserResponse userResponse = new UserResponse();
-		
-		int systemRoleId = userOrgDao.getSystemRoleId(requestingUser, userOrgWorkspaceId);
-		
-		//TO DO: Check to see if user is admin in org or super admin in ANY org
-		if((systemRoleId == SADisplayConstants.ADMIN_ROLE_ID ||
-				systemRoleId == SADisplayConstants.SUPER_ROLE_ID) ||
-				userOrgDao.isUserRole(requestingUser, SADisplayConstants.SUPER_ROLE_ID)){
-			
+
+		User u = userDao.getUser(requestingUser);
+
+		if(u.isElevated())
+		{
 			int count = userOrgDao.setUserOrgEnabled(userOrgWorkspaceId, enabled);
 			
 			if(count == 1){
@@ -1140,6 +1176,7 @@ public class UserServiceImpl implements UserService {
 						String fromEmail = APIConfig.getInstance().getConfiguration().getString(APIConfig.NEW_USER_ENABLED_EMAIL);
 						String alertTopic = String.format("iweb.nics.email.alert");
 						User newUser = userDao.getUserById(userId);
+
 						String emailTemplate = APIConfig.getInstance().getConfiguration()
 								.getString(APIConfig.NEW_USER_BODY_TEMPLATE);
 						String emailBody;
@@ -1243,13 +1280,11 @@ public class UserServiceImpl implements UserService {
 		
 		if(!username.equalsIgnoreCase(requestingUser)){
 			
-			//User is not requesting their own profile
-			int requestingUserRole = userOrgDao.getSystemRoleIdForUserOrg(requestingUser, rUserOrgId);
-			
+			User u = userDao.getUser(requestingUser);
+
 			//Verify the request user is an admin for the organization or a super user for any other organization
-			if(requestingUserRole != SADisplayConstants.ADMIN_ROLE_ID &&
-					!userOrgDao.isUserRole(requestingUser, SADisplayConstants.SUPER_ROLE_ID)){
-			
+			if(u.isElevated(orgId))
+			{
 				return Response.status(Status.BAD_REQUEST).entity(
 					Status.FORBIDDEN.getReasonPhrase()).build();
 			}
@@ -1279,8 +1314,9 @@ public class UserServiceImpl implements UserService {
 			profileResponse.setDescription(userOrg.getDescription());
 			profileResponse.setJobTitle(userOrg.getJobTitle());
 			profileResponse.setSysRoleId(userOrg.getSystemroleid());
-			profileResponse.setIsSuperUser(userOrgDao.isUserRole(username, SADisplayConstants.SUPER_ROLE_ID));
-			profileResponse.setIsAdminUser(userOrgDao.isUserRole(username, SADisplayConstants.ADMIN_ROLE_ID));
+			profileResponse.setIsSuperUser(user.isSuperUser());
+			profileResponse.setIsAdminUser(user.isAdminUser());
+			profileResponse.setIsGisUser(user.isGisUser());
 			profileResponse.setMessage("ok");
 			
 			response = Response.ok(profileResponse).status(Status.OK).build();
@@ -1355,13 +1391,11 @@ public class UserServiceImpl implements UserService {
 
 		if(!user.getUserName().equalsIgnoreCase(requestingUser)){
 			
-			//User is not requesting their own profile
-			int requestingUserRole = userOrgDao.getSystemRoleIdForUserOrg(requestingUser, rUserOrgId);
-			if( (requestingUserRole != SADisplayConstants.SUPER_ROLE_ID &&
-				requestingUserRole != SADisplayConstants.ADMIN_ROLE_ID) &&
-				//Verify the request user is a super user for any other organization
-				!userOrgDao.isUserRole(requestingUser,SADisplayConstants.SUPER_ROLE_ID)){
-			
+			User u = userDao.getUser(requestingUser);
+			int orgId = userOrgDao.getOrgId(rUserOrgId);
+
+			if(u.isElevated(orgId))
+			{
 				return Response.status(Status.BAD_REQUEST).entity(
 					Status.FORBIDDEN.getReasonPhrase()).build();
 			}
@@ -1515,6 +1549,7 @@ public class UserServiceImpl implements UserService {
 		user.setLastname(rUser.getLastName());
 		user.setUsername(rUser.getEmail());
 		user.setUserId(userid);
+
 		user.setPasswordHash(generateSaltedHash(rUser.getPassword(), rUser.getEmail()));
 		user.setEnabled(false);
 		user.setActive(true);
@@ -1983,6 +2018,18 @@ public class UserServiceImpl implements UserService {
 	private void notifyNewUserEmail(String email, String topic) throws IOException {
 		if (email != null) {
 			getRabbitProducer().produce(topic, email);
+		}
+	}
+
+	private void notifyUserChange() throws IOException {
+		try
+		{
+			String topic = "iweb.NICS.userChange";
+			ObjectMapper mapper = new ObjectMapper();
+			getRabbitProducer().produce(topic, "");
+		} catch(Exception e)
+		{
+			// error
 		}
 	}
 	

@@ -70,6 +70,8 @@ import edu.mit.ll.nics.nicsdao.impl.OrgDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserOrgDAOImpl;
 
+import edu.mit.ll.nics.common.entity.User;
+
 /**
  * 
  *
@@ -174,14 +176,17 @@ public class CollabServiceImpl implements CollabService {
 		CollabServiceResponse collabResponse = new CollabServiceResponse();
 		CollabRoom newCollabRoom = null;
 		
-		if(collabroom.getAdminUsers() != null &&
-				collabroom.getAdminUsers().size() > 0){
-			//User the username attached to the token to find the system role Id
-			int systemRoleId = userOrgDao.getSystemRoleIdForUserOrg(username, userOrgId);
-			if(systemRoleId == SADisplayConstants.ADMIN_ROLE_ID ||
-					systemRoleId == SADisplayConstants.SUPER_ROLE_ID){
+		if(collabroom.getAdminUsers() != null && collabroom.getAdminUsers().size() > 0)
+		{
+			
+			User u = userDao.getUser(username);
+
+			if(u.isElevated(orgId))
+			{
 				return this.postCollabRoomWithPermissions(incidentId, orgId, workspaceId, collabroom);
-			}else{
+			}
+			else
+			{
 				collabResponse.setMessage("Access Denied. User does not have permission to secure a room");
 				response = Response.ok(collabResponse).status(Status.INTERNAL_SERVER_ERROR).build();
 				return response;

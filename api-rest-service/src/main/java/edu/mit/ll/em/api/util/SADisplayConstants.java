@@ -82,7 +82,7 @@ public final class SADisplayConstants {
 	public static final String COLLAB_ROOM_PERMISSION_TABLE = "CollabroomPermission";
 	public static final String DATALAYER_FOLDER_TABLE = "Datalayerfolder";
 	public static final String FORM_TABLE = "Form";
-	public static final String FORM_TYPE_TABLE = "FormType";
+	public static final String FORM_TYPE_TABLE = "formtype";
 	public static final String ORG_TABLE = "Org";
 	public static final String LOG_TABLE = "Log";
 	public static final String ORG_FOLDER_TABLE = "OrgFolder";
@@ -94,7 +94,8 @@ public final class SADisplayConstants {
 	public static final String USER_ORG_WORKSPACE_TABLE = "userorg_workspace";
     public static final String UXOREPORT_TABLE = "Uxoreport";
 	public static final String DATALAYER_ORG_TABLE = "datalayer_org";
-	
+	public static final String GRAPHIC_URL = "graphicurl";
+
 	//COMMON COLUMN NAMES
 	public static final String CREATED = "created";
 
@@ -203,7 +204,7 @@ public final class SADisplayConstants {
 	public static final String INCIDENT_TYPE_ID = "incidenttypeid";
 	public static final String USER_ESCAPED = "\"user\"";
 	public static final String DELETED_FEATURE_ID = "deletedfeatureid";
-	public static final String FEATURE_ID = "featureid";
+	public static final String FEATURE_ID = "featureId";
 	public static final String USER_ORG_ORG_ID = "userorg.orgid";
 	public static final String ID = "id";
 	
@@ -381,6 +382,7 @@ public final class SADisplayConstants {
 	public static final String IMAGE_FEATURE_TABLE = "imagefeature";
 	public static final String LOCATION = "location";
 	public static final String IMAGE_ID = "imageid";
+
 	// Feature
 	public static final String ALL_FEATURES = "all";
 	public static final String POINT = "point";
@@ -412,3 +414,4 @@ public final class SADisplayConstants {
 	public static final String WFS = "wfs";
 	public static final String NS = "ns";
 }
+

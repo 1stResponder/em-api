@@ -46,10 +46,11 @@ import edu.mit.ll.nics.common.rabbitmq.RabbitPubSubProducer;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.springframework.dao.DataAccessException;
+import edu.mit.ll.nics.nicsdao.impl.UserDAOImpl;
+import edu.mit.ll.nics.common.entity.User;
 
 import edu.mit.ll.nics.common.entity.CollabRoom;
 import edu.mit.ll.nics.common.entity.Org;
-import edu.mit.ll.nics.common.entity.User;
 import edu.mit.ll.em.api.exception.DuplicateCollabRoomException;
 import edu.mit.ll.em.api.rs.CollabService;
 import edu.mit.ll.em.api.rs.FieldMapResponse;
@@ -59,9 +60,11 @@ import edu.mit.ll.em.api.util.APILogger;
 import edu.mit.ll.nics.nicsdao.impl.IncidentDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.OrgDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserDAOImpl;
+import edu.mit.ll.nics.nicsdao.impl.UserSessionDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserOrgDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.WorkspaceDAOImpl;
 import edu.mit.ll.nics.common.entity.Incident;
+import edu.mit.ll.nics.common.entity.Usersession;
 import edu.mit.ll.nics.common.email.JsonEmail;
 
 
@@ -90,6 +93,9 @@ public class IncidentServiceImpl implements IncidentService {
 	
 	/** The User DAO */
 	private static final UserOrgDAOImpl userOrgDao = new UserOrgDAOImpl();
+
+	/** The User Session Dao*/
+	private static final UserSessionDAOImpl userSessionDao = new UserSessionDAOImpl();
 	
 	/** The User DAO */
 	private static final WorkspaceDAOImpl workspaceDao = new WorkspaceDAOImpl();
@@ -111,20 +117,34 @@ public class IncidentServiceImpl implements IncidentService {
 		IncidentServiceResponse incidentResponse = new IncidentServiceResponse();
 		List<edu.mit.ll.nics.common.entity.Incident> incidents = null;
 		try {
-			incidents = incidentDao.getIncidents(workspaceId); //.getIncidentsAccessibleByUser(workspaceId, accessibleByUserId);
-			
+
+			User u = userDao.getUserById(accessibleByUserId);
+
+			if(u.isSuperUser())
+			{
+				incidents = incidentDao.getIncidents(workspaceId);
+			}
+			else
+			{
+				incidents = incidentDao.getIncidentsAccessibleByUser(workspaceId, accessibleByUserId);
+			}
+
 			incidentResponse.setIncidents(incidents);
 			incidentResponse.setCount(incidents.size());
 			incidentResponse.setMessage("ok");
-			response = Response.ok(incidentResponse).status(Status.OK).build();			
-		} catch (DataAccessException e) { //(ICSDatastoreException e) {
+			response = Response.ok(incidentResponse).status(Status.OK).build();
+		}
+		catch (DataAccessException e)
+		{ //(ICSDatastoreException e) {
 			APILogger.getInstance().e(CNAME, "Data access exception while getting Incidents"
 					+ "in (workspaceid,accessibleByUserId): " + workspaceId + ", " 
 					+ accessibleByUserId + ": " + e.getMessage());
 			incidentResponse.setMessage("Data access failure. Unable to read all incidents: " + e.getMessage());
 			incidentResponse.setCount(incidentResponse.getIncidents().size());
 			response = Response.ok(incidentResponse).status(Status.INTERNAL_SERVER_ERROR).build();			
-		} catch (Exception e) {
+		}
+		catch (Exception e)
+		{
 			APILogger.getInstance().e(CNAME, "Unhandled exception while getting Incidents"
 					+ "in (workspaceid,accessibleByUserId): " + workspaceId + ", " 
 					+ accessibleByUserId + ": " + e.getMessage());
@@ -145,52 +165,77 @@ public class IncidentServiceImpl implements IncidentService {
 		
 		return Response.ok(mapResponse).status(Status.OK).build();
 	}
-	
-	public Response activateIncident(int workspaceId, int incidentId, String username){
-		if(userOrgDao.isUserRole(username, SADisplayConstants.SUPER_ROLE_ID) ||
-				incidentDao.isAdmin(workspaceId, incidentId, username)){
-		
-			boolean ret = incidentDao.setIncidentActive(incidentId, true);
-			if(ret){
-				String topic = String.format("iweb.NICS.ws.%s.newIncident", workspaceId);
-				try{
+
+	public Response updateIncidentState(int workspaceId, int incidentId, String username, boolean isActive)
+	{
+		APILogger.getInstance().i(CNAME, String.format("Updating the state for incidentId %s", incidentId));
+
+		String msg = String.format("IncidentId is: %1s. UserName is: %2s. WorkspaceId is: %3s", incidentId, username, workspaceId);
+		APILogger.getInstance().e(CNAME, msg);
+
+		int orgId = incidentDao.getOrgId(incidentId);
+
+		APILogger.getInstance().e(CNAME, "OrgId is: " + orgId);
+
+		User u = userDao.getUser(username);
+
+		if(u.isElevated(orgId))
+		{
+			boolean ret = incidentDao.setIncidentActive(incidentId, isActive);
+			String topic = "";
+			String type = "";
+
+			if(isActive)
+			{
+				topic = String.format("iweb.NICS.ws.%s.newIncident", workspaceId);
+				type = "activat";
+			}
+			else
+			{
+				topic = String.format("iweb.NICS.ws.%s.removeIncident", workspaceId);
+				type = "archiv";
+			}
+
+			if(ret)
+			{
+				try
+				{
 					this.notifyIncident(incidentDao.getIncident(incidentId), topic);
 					return Response.ok(Status.OK.toString()).status(Status.OK).build();
-				}catch(Exception e){
-					return Response.ok("The incident was activated successfully, but there "
-							+ "was an error notifying the users.").status(Status.INTERNAL_SERVER_ERROR).build();
+				}
+				catch(Exception e)
+				{
+					msg = String.format("The incident was %sed successfully, but there was an error notifying the users.", type);
+					APILogger.getInstance().e(CNAME, msg + ": " + e);
+					return Response.ok(msg).status(Status.INTERNAL_SERVER_ERROR).build();
 				}
 			}
-			return Response.ok("There was an error activating the incident").status(Status.INTERNAL_SERVER_ERROR).build();
-		}else{
+
+			msg = String.format("There was an error %sing the incident", type);
+			APILogger.getInstance().e(CNAME, msg);
+			return Response.ok(msg).status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		else
+		{
+			msg = String.format("Requesting user %s has insufficient permissions", username);
+			APILogger.getInstance().e(CNAME, msg);
 			return Response.ok(Status.FORBIDDEN).status(Status.FORBIDDEN).build();
 		}
 	}
 	
-	public Response archiveIncident(int workspaceId, int incidentId, String username){
-		if(userOrgDao.isUserRole(username, SADisplayConstants.SUPER_ROLE_ID) ||
-				incidentDao.isAdmin(workspaceId, incidentId, username)){
-			boolean ret = incidentDao.setIncidentActive(incidentId, false);
-			if(ret){
-				String topic = String.format("iweb.NICS.ws.%s.removeIncident", workspaceId);
-				try{
-					this.notifyIncident(incidentId, topic);
-					return Response.ok(Status.OK.toString()).status(Status.OK).build();
-				}catch(Exception e){
-					return Response.ok("The incident was activated successfully, but there "
-							+ "was an error notifying the users.").status(Status.INTERNAL_SERVER_ERROR).build();
-				}
-			}
-			return Response.ok("There was an error activating the incident").status(Status.INTERNAL_SERVER_ERROR).build();
-		}else{
-			return Response.ok(Status.FORBIDDEN).status(Status.FORBIDDEN).build();
-		}
-
+	public Response activateIncident(int workspaceId, int incidentId, String username)
+	{
+		return updateIncidentState(workspaceId, incidentId, username, true);
+	}
+	
+	public Response archiveIncident(int workspaceId, int incidentId, String username)
+	{
+		return updateIncidentState(workspaceId, incidentId, username, false);
 	}
 	
 	public Response getActiveIncidents(Integer workspaceId, Integer orgId){
 		return this.getIncidents(workspaceId, orgId, true);
-	}	
+	}
 	
 	public Response getArchivedIncidents(Integer workspaceId, Integer orgId){
 		return this.getIncidents(workspaceId, orgId, false);
@@ -222,8 +267,17 @@ public class IncidentServiceImpl implements IncidentService {
 		IncidentServiceResponse incidentResponse = new IncidentServiceResponse();
 		List<edu.mit.ll.nics.common.entity.Incident> incidents = null;
 		try {
-			incidents = incidentDao.getIncidentsTree(workspaceId); 
 
+			User u = userDao.getUserById(accessibleByUserId);
+
+			if(u.isSuperUser())
+			{
+				incidents = incidentDao.getIncidentsTree(workspaceId);
+			}
+			else
+			{
+				incidents = incidentDao.getIncidentsTreeAccessibleByUser(workspaceId,accessibleByUserId);
+			}
 			
 			incidentResponse.setIncidents(incidents);
 			incidentResponse.setCount(incidents.size());

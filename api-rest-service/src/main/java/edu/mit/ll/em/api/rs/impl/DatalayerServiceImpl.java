@@ -128,9 +128,10 @@ import com.drew.lang.GeoLocation;
 import com.drew.metadata.Metadata;
 
 import edu.mit.ll.nics.tools.image_processing.ImageProcessor;
+import edu.mit.ll.nics.common.entity.User;
 
 /**
- * 
+ *
  * @AUTHOR st23420
  *
  */
@@ -257,6 +258,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 		return response;
 	}
 
+
 	@Override
 	public Response postDataLayer(int workspaceId, String dataSourceId, Datalayer datalayer, String username) {
 		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
@@ -304,7 +306,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 				//Currently always uploads to Data
 				//Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
 				//Currently always uploads to Upload
-				Folder folder = folderDao.getFolderByName("Data", workspaceId);
+				Folder folder = folderDao.getFolderByName("Upload", workspaceId);
 				int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
 				datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
 				newDatalayerFolder = datalayerDao.getDatalayerfolder(datalayerId, folder.getFolderid());
@@ -408,10 +410,12 @@ public class DatalayerServiceImpl implements DatalayerService {
 		return response;
 	}
 	
-	public Response postShapeDataLayer(int workspaceId, String displayName, MultipartBody body, String username) {
-		if(!userOrgDao.isUserRole(username, SADisplayConstants.SUPER_ROLE_ID) &&
-				!userOrgDao.isUserRole(username, SADisplayConstants.ADMIN_ROLE_ID) &&
-				!userOrgDao.isUserRole(username, SADisplayConstants.GIS_ROLE_ID)){
+	public Response postShapeDataLayer(int workspaceId, String displayName, MultipartBody body, String username) 
+	{
+		User u = userDao.getUser(username);
+
+		if(!(u.isElevated() || u.isGisUser()))
+		{
 			logger.error("Permission Denied");
 			return getInvalidResponse();
 		}
@@ -512,7 +516,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 		datalayer.setDatalayersource(dlsource);
 		
 		String datalayerId = datalayerDao.insertDataLayer(dataSourceId, datalayer);
-		Folder folder = folderDao.getFolderByName("Data", workspaceId);
+		Folder folder = folderDao.getFolderByName("Upload", workspaceId);
 		int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
 		datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
 
@@ -546,14 +550,10 @@ public class DatalayerServiceImpl implements DatalayerService {
 				filePath.append("/");
 				filePath.append(id);
 				
-				System.out.println("FILE PATH : " + filePath.toString());
-				
-
-				//Path path = this.createFile(attachment, Paths.get(filePath.toString()));
 				Path path = this.createFile(attachment, filePath.toString());
 				
 				if(path != null){
-					System.out.println("PATH : " + filePath.toString() + "/" + path.getFileName());
+					logger.debug("File Path: " + filePath.toString() + "/" + path.getFileName());
 
 					GeoLocation location  = null;
 					
@@ -612,39 +612,42 @@ public class DatalayerServiceImpl implements DatalayerService {
 	public Response finishImageLayer(boolean cancel, int workspaceId, String id, String title, int usersessionId, String username){
 
 		DatalayerServiceResponse datalayerResponse = new DatalayerServiceResponse();
-		if(!cancel){
-			ImageLayerGenerator generator = new ImageLayerGenerator(
-					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_URL), 
-					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_USERNAME),
-					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_PASSWORD),
-					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_WORKSPACE), 
-					APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_STORE));
-			
-			boolean layerCreated = generator.addImageLayer(id, title);
-			
-			System.out.println("Layer Created : " + layerCreated);
-			
-			if(layerCreated){
-				String datasourceId = datalayerDao.getDatasourceId(
-						APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_DATASOURCE_URL));
+		if(!cancel)
+		{
+				ImageLayerGenerator generator = new ImageLayerGenerator(
+						APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_URL), 
+						APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_USERNAME),
+						APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_PASSWORD),
+						APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_WORKSPACE), 
+						APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_MAPSERVER_STORE));
 				
-				Datalayer datalayer = new Datalayer();
-				datalayer.setBaselayer(false);
-				datalayer.setCreated(new Date());
-				datalayer.setDisplayname(title);
-				datalayer.setUsersessionid(usersessionId);
+				boolean layerCreated = generator.addImageLayer(id, title);
 				
-				Datalayersource datalayerSource = new Datalayersource();
+				System.out.println("Layer Created : " + layerCreated);
+				
+				if(layerCreated)
+				{
+					String datasourceId = datalayerDao.getDatasourceId(
+							APIConfig.getInstance().getConfiguration().getString(APIConfig.IMAGE_LAYER_DATASOURCE_URL));
+					
+					Datalayer datalayer = new Datalayer();
+					datalayer.setBaselayer(false);
+					datalayer.setCreated(new Date());
+					datalayer.setDisplayname(title);
+					datalayer.setUsersessionid(usersessionId);
+					
+					Datalayersource datalayerSource = new Datalayersource();
 
 
-				datalayerSource.setLayername(datalayerDao.getImageFileName(id));
-				datalayer.setDatalayersource(datalayerSource);
-				
-				System.out.println("Post Datalayer : " + workspaceId + "," + datasourceId + "," + datalayer.getDisplayname());
-				
-				return this.postDataLayer(workspaceId, datasourceId, datalayer, username);
+					datalayerSource.setLayername(id);
+					datalayer.setDatalayersource(datalayerSource);
+
+					logger.debug("Post Datalayer : " + workspaceId + "," + datasourceId + "," + datalayer.getDisplayname());
+					return this.postDataLayer(workspaceId, datasourceId, datalayer, username);
+				}
 			}
-		}else{
+			else
+			{
 			StringBuffer responseMessage = new StringBuffer();
 			//Remove the image files from the file system
 			StringBuffer filePath = new StringBuffer(
@@ -708,12 +711,13 @@ public class DatalayerServiceImpl implements DatalayerService {
 			while(iter.hasNext()){
 
 				UserOrg userOrg = (UserOrg)iter.next();
-				
-				if(userOrg.getUserorgid() == userOrgId && 
-						(userOrg.getSystemroleid() == SADisplayConstants.SUPER_ROLE_ID || 
-						userOrg.getSystemroleid() == SADisplayConstants.GIS_ROLE_ID ||
-						userOrg.getSystemroleid() == SADisplayConstants.ADMIN_ROLE_ID	)){
-					valid = true;
+
+				if(userOrg.getUserorgid() == userOrgId)
+				{
+					if(userOrg.isElevated() || userOrg.isGisUser())
+					{
+						valid = true;
+					}
 				}
 				
 			}
@@ -884,7 +888,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 
 					//Rootfolder folder = folderDao.getRootFolder("Data", workspaceId);
 					//int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
-					Folder folder = folderDao.getFolderByName("Data", workspaceId);
+					Folder folder = folderDao.getFolderByName("Upload", workspaceId);
 					int nextFolderIndex = datalayerDao.getNextDatalayerFolderIndex(folder.getFolderid());
 					datalayerDao.insertDataLayerFolder(folder.getFolderid(), datalayerId, nextFolderIndex);
 					newDatalayerFolder = datalayerDao.getDatalayerfolder(datalayerId, folder.getFolderid());
@@ -1069,6 +1073,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 	/*
 	private Path createFile(Attachment attachment, Path directory){	
 		Path tempPath = null, path = null;
+		
 		try {
 			Files.createDirectories(directory);
 
@@ -1328,7 +1333,7 @@ public class DatalayerServiceImpl implements DatalayerService {
 			String topic = String.format("iweb.NICS.%s.datalayer.new", workspaceId);
 			ObjectMapper mapper = new ObjectMapper();
 			String message = mapper.writeValueAsString(datalayerfolder);
-			getRabbitProducer().produce(topic, message);
+			getRabbitProducer().produce(topic, message);	
 		}
 	}
 	
@@ -1383,4 +1388,5 @@ public class DatalayerServiceImpl implements DatalayerService {
 		return Response.status(Status.BAD_REQUEST).entity(
 				Status.FORBIDDEN.getReasonPhrase()).build();
 	}
+	
 }

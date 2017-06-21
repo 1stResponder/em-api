@@ -31,10 +31,11 @@ package edu.mit.ll.em.api.rs.impl;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-
+import edu.mit.ll.nics.common.entity.User;
 import edu.mit.ll.nics.common.entity.Log;
 import edu.mit.ll.nics.nicsdao.impl.LogDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserOrgDAOImpl;
+import edu.mit.ll.nics.nicsdao.impl.UserDAOImpl;
 import edu.mit.ll.em.api.rs.AnnouncementService;
 import edu.mit.ll.em.api.rs.LogServiceResponse;
 import edu.mit.ll.em.api.util.SADisplayConstants;
@@ -53,12 +54,15 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 	/** User DAO */
 	private static final UserOrgDAOImpl userOrgDao = new UserOrgDAOImpl();
 	private static final LogDAOImpl logDao = new LogDAOImpl();
+	private final UserDAOImpl userDao = new UserDAOImpl();
 
 	@Override
 	public Response postAnnouncement(int workspaceId, Log log, String username) {
+
+		User u = userDao.getUser(username);
 		
-		if(userOrgDao.isUserRole(username, SADisplayConstants.ADMIN_ROLE_ID) ||
-				userOrgDao.isUserRole(username, SADisplayConstants.SUPER_ROLE_ID)){
+		if(u.isElevated())
+		{
 			if(logDao.postLog(workspaceId, log)){
 				return Response.status(Status.OK).entity(Status.OK.getReasonPhrase()).build(); 
 			}else{
@@ -81,8 +85,11 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
 	@Override
 	public Response deleteAnnouncement(int workspaceId, int logId, String username) {
-		if(userOrgDao.isUserRole(username, SADisplayConstants.ADMIN_ROLE_ID) ||
-				userOrgDao.isUserRole(username, SADisplayConstants.SUPER_ROLE_ID)){
+
+		User u = userDao.getUser(username);
+
+		if(u.isElevated())
+		{
 			if(logDao.deleteLog(logId)){
 				return Response.status(Status.OK).entity(Status.OK.getReasonPhrase()).build(); 
 			}else{

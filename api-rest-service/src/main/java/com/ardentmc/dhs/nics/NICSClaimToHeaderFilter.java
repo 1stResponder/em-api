@@ -33,20 +33,22 @@ import java.io.IOException;
 import java.util.*;
 
 import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 
 import org.apache.cxf.fediz.core.Claim;
 import org.apache.cxf.fediz.core.ClaimCollection;
-import org.apache.cxf.fediz.spring.FederationUser;
 import org.apache.cxf.fediz.spring.authentication.FederationAuthenticationToken;
+import org.apache.cxf.fediz.spring.FederationUser;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.GenericFilterBean;
@@ -70,6 +72,7 @@ public class NICSClaimToHeaderFilter extends GenericFilterBean {
 		final HttpServletResponse resp = (HttpServletResponse) response;
 		HttpServletRequest requestWrapper = req;
 		String requestURI = req.getRequestURI();
+		logger.info("requestURI: "+requestURI);
 		try {
 
 			//Do not cache the home page to allow the filter to redirect if the user
@@ -82,56 +85,24 @@ public class NICSClaimToHeaderFilter extends GenericFilterBean {
 			}
 
 	        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
 	        if (auth instanceof FederationAuthenticationToken) {
 	        		        		        	
-	            FederationAuthenticationToken fedAuthToken = (FederationAuthenticationToken)auth;	            
+	            FederationAuthenticationToken fedAuthToken = (FederationAuthenticationToken)auth;
+
 	            if (fedAuthToken.getUserDetails() instanceof FederationUser) {
 	            	
-	                ClaimCollection claims = ((FederationUser)fedAuthToken.getUserDetails()).getClaims();
-	                Map<String, Object> claimValuesByTypeMap = new HashMap<String, Object>();
-	                logger.info("FedAuth Claims found: "+claims.size());
-	                for (Claim c: claims) {
-	                	String claimType = c.getClaimType().toString();
-						Object claimValue = c.getValue();
-//						logger.info(claimType + ": " + claimValue);
-	                	claimValuesByTypeMap.put(claimType, claimValue);
-	                }
-	                
-	                if(claimValuesByTypeMap.containsKey("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")) {
-                		// email address claim
-                		Object claimValue = claimValuesByTypeMap.get("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress");
-						String emailAddress = (String)claimValue;
-						logger.info("Translating NICS user based on emailaddress claim: "+emailAddress);
-						requestWrapper = translateClaimToHeader(emailAddress, req, resp);	                	
-	                } else {
-		                // Try sub-claims first
-		                Object idpClaimValue = claimValuesByTypeMap.get("http://identityserver.thinktecture.com/claims/identityprovider");
-		                if(idpClaimValue != null) {
-		                	String idpClaim = (String)idpClaimValue;
-		                	String subClaimType = "http://identityserver.thinktecture.com/claims/provider:"+idpClaim.toLowerCase();
-		                	Object subClaim = claimValuesByTypeMap.get(subClaimType);
-		                	JSONArray subClaimsJSONArray = new JSONArray(subClaim.toString());	
-		                	Map<String, Object> subClaimValuesByTypeMap = new HashMap<String, Object>();
-		                	for(int i = 0; i < subClaimsJSONArray.length(); i++) {
-		                		JSONObject aSubClaimJSON = subClaimsJSONArray.getJSONObject(i);
-		                		String aSubClaimType = aSubClaimJSON.getString("Type");
-		                		String aSubClaimValue = aSubClaimJSON.getString("Value");
-								subClaimValuesByTypeMap.put(aSubClaimType, aSubClaimValue);
-		                	}
-		                	
-		                	String nameidentifierSubClaimValue = (String)subClaimValuesByTypeMap.get("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
-	                		if(nameidentifierSubClaimValue != null) {
-	                			
-	    						logger.info("Translating NICS user based on emailaddress subClaim: "+nameidentifierSubClaimValue);
-	    						requestWrapper = translateClaimToHeader(nameidentifierSubClaimValue, req, resp);
-	            				
-	                		} else {
-	                			throw new RuntimeException("Could not find emailaddress claim for identity provider: "+idpClaim);
-	                		}
-		                	
-		                }
-	                }
-	
+            		String username = fedAuthToken.getUserDetails().getUsername();
+
+            		if(username != null && !username.isEmpty())
+            		{
+						logger.info("Looking up NICS user based on username claim: " + username);
+						requestWrapper = translateClaimToHeader(username, req, resp);
+					} else
+					{
+						throw new RuntimeException("Could not find username claim");
+					}
+					
 	            } else {
 	            	logger.info("FederationAuthenticationToken found but not FederationUser");
 	            }
@@ -139,9 +110,12 @@ public class NICSClaimToHeaderFilter extends GenericFilterBean {
 	        } else {
 	            logger.info("No FederationAuthenticationToken found in Spring Security Context.");
 	        }
+
 		} catch(Exception ex) {
 			logger.error("Exception caught at the outer level.", ex);
+			//redirectToErrorGeneric(req, resp);
 		}
+
 		chain.doFilter(requestWrapper, response);
 	}
 

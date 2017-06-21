@@ -38,6 +38,8 @@ import java.util.StringTokenizer;
 
 import javax.ws.rs.CookieParam;
 import javax.ws.rs.PathParam;
+import edu.mit.ll.nics.nicsdao.impl.UserDAOImpl;
+import edu.mit.ll.nics.common.entity.User;
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -49,12 +51,10 @@ import edu.mit.ll.soa.sso.exception.InitializationException;
 import edu.mit.ll.em.api.rs.SSOManagementService;
 import edu.mit.ll.em.api.rs.SSOToken;
 import edu.mit.ll.em.api.rs.SSOUser;
-import edu.mit.ll.em.api.rs.User;
 import edu.mit.ll.em.api.rs.UserResponse;
 import edu.mit.ll.em.api.util.APIConfig;
 import edu.mit.ll.em.api.util.APILogger;
 import edu.mit.ll.em.api.util.SADisplayConstants;
-import edu.mit.ll.nics.nicsdao.impl.UserDAOImpl;
 import edu.mit.ll.nics.nicsdao.impl.UserOrgDAOImpl;
 import edu.mit.ll.nics.sso.util.SSOUtil;
 
@@ -77,6 +77,8 @@ public class SSOManagementServiceImpl implements SSOManagementService {
 	
 	/** Flag specifying whether or not there was an initialization failure */
 	private boolean initFailure = false;
+
+	private final UserDAOImpl userDao = new UserDAOImpl();
 	
 	
 	/**
@@ -350,67 +352,74 @@ public class SSOManagementServiceImpl implements SSOManagementService {
 	@Override
 	public Response enableUser(String email, String flag, int userOrgWorkspaceId, String username) {
 		
-		UserOrgDAOImpl userOrgDao = new UserOrgDAOImpl();
-		UserResponse userResponse = new UserResponse();
-		
-		int systemRoleId = userOrgDao.getSystemRoleId(username, userOrgWorkspaceId);
-		
-		if(((systemRoleId == SADisplayConstants.ADMIN_ROLE_ID ||
-				systemRoleId == SADisplayConstants.SUPER_ROLE_ID)) ||
-				userOrgDao.isUserRole(username, SADisplayConstants.SUPER_ROLE_ID)){
-		
-			if(email == null || email.isEmpty() 
-					|| flag == null || flag.isEmpty()) {
-				return Response.ok("Invalid parameters").status(Status.BAD_REQUEST).build();
-			}
+		Boolean openAmIdentity = APIConfig.getInstance().getConfiguration().getBoolean("openAm.Identity", false);
+
+		if(openAmIdentity)
+		{
+
+			UserOrgDAOImpl userOrgDao = new UserOrgDAOImpl();
+			UserResponse userResponse = new UserResponse();
 			
-			String iNetUserStatus = null;
+			User u = userDao.getUser(username);
+			int orgId = userOrgDao.getOrgIdForUserOrgWorkspace(userOrgWorkspaceId);
 			
-			if(flag.equals("enable")) {
-				iNetUserStatus = "Active";
-			} else if(flag.equals("disable")) {
-				iNetUserStatus = "Inactive";
-			} else {		
-				return Response.ok("Must specify 'enable' or 'disable'").status(Status.BAD_REQUEST).build();
-			}
-			
-			checkInit();
-			
-			// loginAsAdmin assumes user and pass are encrypted in sso-tools.properties file
-			if(ssoUtil.loginAsAdmin()) {
-				System.out.println("\n!!!Successfully logged in as admin");
-			} else {
-				System.out.println("\n!!!FAILED to log in as admin");
-			}
-			
-			String toggleResult = ssoUtil.toggleUserStatus(email, (iNetUserStatus.equals("Active") ? true : false));
-					
-			//Map userAttributes = ssoUtil.setAttribute("iNetUserStatus", iNetUserStatus);
-			
-			/*
-			boolean success = false;
-			if(userAttributes == null || userAttributes.isEmpty()) {
-				// error/no attributes changed
-			} else {
-				// TODO:SSO verify inetuserstatus is now set to iNetUserStatus as specified
-				
-				Set val = (Set)userAttributes.get("inetUserStatus");
-				result = (String)val.iterator().next();
-				System.out.println("Got iNetUserStatus returned from set attribute call: " + result);
-				if(result.equals(iNetUserStatus)) {
-					// success
-					success = true;
-				} else {
-					// failed
+			if(u.isElevated(orgId))
+			{
+				if(email == null || email.isEmpty() 
+						|| flag == null || flag.isEmpty()) {
+					return Response.ok("Invalid parameters").status(Status.BAD_REQUEST).build();
 				}
+				
+				String iNetUserStatus = null;
+				
+				if(flag.equals("enable")) {
+					iNetUserStatus = "Active";
+				} else if(flag.equals("disable")) {
+					iNetUserStatus = "Inactive";
+				} else {		
+					return Response.ok("Must specify 'enable' or 'disable'").status(Status.BAD_REQUEST).build();
+				}
+				
+				checkInit();
+				
+				// loginAsAdmin assumes user and pass are encrypted in sso-tools.properties file
+				if(ssoUtil.loginAsAdmin()) {
+					System.out.println("\n!!!Successfully logged in as admin");
+				} else {
+					System.out.println("\n!!!FAILED to log in as admin");
+				}
+				
+				String toggleResult = ssoUtil.toggleUserStatus(email, (iNetUserStatus.equals("Active") ? true : false));
+						
+				//Map userAttributes = ssoUtil.setAttribute("iNetUserStatus", iNetUserStatus);
+				
+				/*
+				boolean success = false;
+				if(userAttributes == null || userAttributes.isEmpty()) {
+					// error/no attributes changed
+				} else {
+					// TODO:SSO verify inetuserstatus is now set to iNetUserStatus as specified
+					
+					Set val = (Set)userAttributes.get("inetUserStatus");
+					result = (String)val.iterator().next();
+					System.out.println("Got iNetUserStatus returned from set attribute call: " + result);
+					if(result.equals(iNetUserStatus)) {
+						// success
+						success = true;
+					} else {
+						// failed
+					}
+				}
+				*/
+				ssoUtil.destroyToken(ssoUtil.getTokenIfExists());
+				userResponse.setMessage(toggleResult);
+				
+				return Response.ok(userResponse).status((toggleResult.contains("Success")) ? Status.OK : Status.EXPECTATION_FAILED).build();
 			}
-			*/
-			ssoUtil.destroyToken(ssoUtil.getTokenIfExists());
-			userResponse.setMessage(toggleResult);
-			
-			return Response.ok(userResponse).status((toggleResult.contains("Success")) ? Status.OK : Status.EXPECTATION_FAILED).build();
+			return Response.ok(userResponse).status(Status.BAD_REQUEST).build();
 		}
-		return Response.ok(userResponse).status(Status.BAD_REQUEST).build();
+
+		return Response.ok("Not using OpenAM").status(Status.BAD_REQUEST).build();
 	}
 	
 		

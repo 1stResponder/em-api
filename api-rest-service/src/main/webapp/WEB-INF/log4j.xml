@@ -34,7 +34,7 @@
 
 <log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
   <appender name="CONSOLE" class="org.apache.log4j.ConsoleAppender">
-    <param name="Threshold" value="ERROR"/>
+    <param name="Threshold" value="DEBUG"/>
     <layout class="org.apache.log4j.PatternLayout">
       <param name="ConversionPattern" value="%d{ISO8601} [%p] [%t] [%c] - %m%n" />
     </layout>

@@ -245,10 +245,16 @@
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
-                <groupId>edu.mit.ll.nics.tools</groupId>
-                <artifactId>openam-tools</artifactId>
-                <version>${project.version}</version>
-            </dependency>
+				<groupId>edu.mit.ll.nics.tools</groupId>
+				<artifactId>openam-tools</artifactId>
+				<version>${project.version}</version>
+				<exclusions>
+					<exclusion>
+						<groupId>javax.ws.rs</groupId>
+						<artifactId>jsr311-api</artifactId>
+					</exclusion>
+				</exclusions>
+			</dependency>
 			<dependency>
 				<groupId>javax.ws.rs</groupId>
 				<artifactId>javax.ws.rs-api</artifactId>
